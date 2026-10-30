@@ -5,15 +5,12 @@
   "refmap": "mixins.rwg2.refmap.json",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-    "MixinBOPSacredOak",
     "MixinEntityPlayer",
     "MixinMapGenStructure",
     "MixinMapGenVillage",
     "MixinStructureVillagePiecesVillage",
-    "MixinNaturaRedwoodTreeGen",
     "MixinWorld",
-    "MixinWorldGenLiquids",
-    "MixinWitcheryComponent"
+    "MixinWorldGenLiquids"
   ],
   "client": [
     "MixinEntityPlayerSP"

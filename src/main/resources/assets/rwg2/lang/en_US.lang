@@ -1,5 +1,5 @@
 generator.RWG2=Realistic RC1
-generator.RWG2_CONTINENTS=Realistic RC1 Continents
+generator.RWG2_CONTINENTS=RWG2 Smooth
 rwg2.buginfo.line1=A bug in the RWG version shipped with GTNH 2.2.0.0 caused the world to be generated differently than previous versions.
 rwg2.buginfo.line2=The bug has since been fixed, reverting future generation to pre-2.2.0.0 style.
 rwg2.buginfo.line3=Unfortunately, what version was used when this world was created can't be automatically detected.

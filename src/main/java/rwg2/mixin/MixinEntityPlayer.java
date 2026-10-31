@@ -11,12 +11,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Applies horizontal flight speed after Et Futurum's flight-speed hook, which otherwise overwrites it. */
+import rwg2.data.PlayerSpeedData;
+
+/** Applies the synchronized /speed multiplier without replacing flight speeds supplied by other mods. */
 @Mixin(value = EntityPlayer.class, priority = 900)
 public abstract class MixinEntityPlayer extends EntityLivingBase {
-
-    private static final float VANILLA_WALK_SPEED = 0.1f;
-    private static final float VANILLA_FLY_SPEED = 0.05f;
 
     @Shadow
     public PlayerCapabilities capabilities;
@@ -33,7 +32,7 @@ public abstract class MixinEntityPlayer extends EntityLivingBase {
                     ordinal = 0))
     private void rwg2$applyHorizontalFlightSpeed(float strafe, float forward, CallbackInfo callback) {
         if (capabilities.isFlying) {
-            jumpMovementFactor = VANILLA_FLY_SPEED * capabilities.getWalkSpeed() / VANILLA_WALK_SPEED;
+            jumpMovementFactor *= PlayerSpeedData.getFlightMultiplier((EntityPlayer) (Object) this);
         }
     }
 }

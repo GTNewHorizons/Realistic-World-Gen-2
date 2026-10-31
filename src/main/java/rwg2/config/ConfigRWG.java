@@ -25,6 +25,7 @@ public class ConfigRWG {
     public static boolean generateVillages = true;
     public static boolean generateUndergroundLakes = true;
     public static boolean generateUndergroundLavaLakes = true;
+    public static boolean enableFlightSpeedCommand = true;
     public static float minimumContinentWidth = 2700f;
     public static float maximumContinentWidth = 2700f;
     public static float averageOceanWidth = 100f;
@@ -97,6 +98,11 @@ public class ConfigRWG {
             generateVillages = config.getBoolean("Generate Villages", "Settings", true, "");
             generateUndergroundLakes = config.getBoolean("Generate Underground Lakes", "Settings", true, "");
             generateUndergroundLavaLakes = config.getBoolean("Generate Underground Lava Lakes", "Settings", true, "");
+            enableFlightSpeedCommand = config.getBoolean(
+                    "Enable Flight Speed Command",
+                    "Settings",
+                    true,
+                    "Registers RWG2's /speed command. Disable this when another mod, such as Essentials, provides it.");
             String worldgenWarning = "Changing this after creating a world causes borders between old and new chunks.";
             String continentWidthDescription = "Distance in blocks from a continent's Voronoi centre to its coast. "
                     + worldgenWarning;

@@ -18,8 +18,10 @@ public final class RWG2LateMixins implements ILateMixinLoader {
     @Override
     public List<String> getMixins(Set<String> loadedMods) {
         List<String> mixins = new ArrayList<String>();
-        if (loadedMods.contains("BiomesOPlenty")) mixins.add("MixinBOPSacredOak");
-        if (loadedMods.contains("Natura")) mixins.add("MixinNaturaRedwoodTreeGen");
+        if (RWG2MixinPlugin.diagnosticsEnabled()) {
+            if (loadedMods.contains("BiomesOPlenty")) mixins.add("MixinBOPSacredOak");
+            if (loadedMods.contains("Natura")) mixins.add("MixinNaturaRedwoodTreeGen");
+        }
         if (loadedMods.contains("witchery")) mixins.add("MixinWitcheryComponent");
         return mixins;
     }

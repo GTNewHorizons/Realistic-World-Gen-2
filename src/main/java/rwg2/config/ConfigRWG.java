@@ -12,6 +12,8 @@ import cpw.mods.fml.relauncher.FMLInjectionData;
 public class ConfigRWG {
 
     private static final String CONTINENTAL_CATEGORY = "Continental RWG";
+    public static final String DEBUG_CATEGORY = "Debug";
+    public static final String ENABLE_WORLDGEN_DIAGNOSTICS = "Enable Worldgen Diagnostics";
     private static final int[] DEFAULT_BIOME_IDS = { 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312,
             313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329 };
 
@@ -40,6 +42,7 @@ public class ConfigRWG {
     public static int landmassOffsetZ = 0;
     public static int biomeOffsetX = 0;
     public static int biomeOffsetZ = 0;
+    public static boolean enableWorldgenDiagnostics = false;
 
     public static void init(FMLPreInitializationEvent event) {
         init(event.getSuggestedConfigurationFile());
@@ -229,6 +232,11 @@ public class ConfigRWG {
                     30000000,
                     "Offsets climate and biome selection without moving the selected biome's terrain noise. "
                             + offsetWarning);
+            enableWorldgenDiagnostics = config.getBoolean(
+                    ENABLE_WORLDGEN_DIAGNOSTICS,
+                    DEBUG_CATEGORY,
+                    false,
+                    "Logs cross-chunk tree and village generation. Adds hooks to World.setBlock. Requires a restart.");
         } catch (Exception e) {
             for (int c = 0; c < biomeIDs.length; c++) {
                 biomeIDs[c] = DEFAULT_BIOME_IDS[c];

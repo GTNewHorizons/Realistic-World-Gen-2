@@ -21,6 +21,7 @@ import rwg2.config.ConfigRWG;
 import rwg2.data.RailcraftWorldgenFilter;
 import rwg2.data.VillageMaterials;
 import rwg2.handlers.LoginHandler;
+import rwg2.network.NetworkHandler;
 import rwg2.support.Support;
 import rwg2.world.WorldTypeRealistic;
 
@@ -44,6 +45,7 @@ public class RWG {
 
         ConfigRWG.init(event);
         BaseBiomes.load();
+        NetworkHandler.init();
 
         MinecraftForge.TERRAIN_GEN_BUS.register(new VillageMaterials());
         MinecraftForge.TERRAIN_GEN_BUS.register(new RailcraftWorldgenFilter());
@@ -69,6 +71,8 @@ public class RWG {
 
         manager.registerCommand(new RwgNoiseCommand());
         manager.registerCommand(new RwgBugInfoCommand());
-        manager.registerCommand(new SpeedCommand());
+        if (ConfigRWG.enableFlightSpeedCommand) {
+            manager.registerCommand(new SpeedCommand());
+        }
     }
 }

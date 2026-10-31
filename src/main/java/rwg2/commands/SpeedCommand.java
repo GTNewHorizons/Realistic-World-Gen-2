@@ -4,14 +4,13 @@ import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.WrongUsageException;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ChatComponentText;
 
-/** Changes the executing player's walking and flying speeds by the same multiplier. */
-public class SpeedCommand extends CommandBase {
+import rwg2.data.PlayerSpeedData;
+import rwg2.network.NetworkHandler;
 
-    private static final float BASE_WALK_SPEED = 0.1f;
-    private static final float BASE_FLY_SPEED = 0.05f;
+/** Changes the executing player's flight speed multiplier. */
+public class SpeedCommand extends CommandBase {
 
     @Override
     public String getCommandName() {
@@ -37,16 +36,9 @@ public class SpeedCommand extends CommandBase {
         double multiplier = parseDoubleBounded(sender, args[0], 0.0, 10.0);
         EntityPlayerMP player = getCommandSenderAsPlayer(sender);
 
-        // The public setters are client-only in 1.7.10. Round-trip through NBT so this remains safe on a dedicated
-        // server.
-        NBTTagCompound playerData = new NBTTagCompound();
-        player.capabilities.writeCapabilitiesToNBT(playerData);
-        NBTTagCompound abilities = playerData.getCompoundTag("abilities");
-        abilities.setFloat("walkSpeed", (float) multiplier * BASE_WALK_SPEED);
-        abilities.setFloat("flySpeed", (float) multiplier * BASE_FLY_SPEED);
-        player.capabilities.readCapabilitiesFromNBT(playerData);
-        player.sendPlayerAbilities();
+        PlayerSpeedData.setFlightMultiplier(player, (float) multiplier);
+        NetworkHandler.syncFlightSpeed(player);
 
-        sender.addChatMessage(new ChatComponentText("Walk and fly speed set to " + multiplier + "x."));
+        sender.addChatMessage(new ChatComponentText("Flight speed set to " + multiplier + "x."));
     }
 }

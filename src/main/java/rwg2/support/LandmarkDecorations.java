@@ -29,25 +29,27 @@ public final class LandmarkDecorations {
     private static final int LAVA_PILLAR_TOP = 37;
     private static final int RIVER_PILLAR_TOP = 64;
     private static final int RIVER_PILLAR_BOTTOM = 40;
-    private static final int PORTAL_ISLAND_RADIUS = 7;
-    private static final int PORTAL_ISLAND_SPAN = PORTAL_ISLAND_RADIUS * 2 + 1;
+    private static final int ISLAND_RADIUS = 7;
+    private static final int ISLAND_SPAN = ISLAND_RADIUS * 2 + 1;
+    /** Keeps the puzzle floor the size the rounded pillar used to give it. */
+    private static final int ISLAND_PLATFORM_RADIUS_SQUARED = 5;
 
     private final Block deepslate;
     private final Block puzzleMaster;
     private final Block twilightPortal;
     private final Block twilightFirefly;
-    private final Block[] portalFlora;
-    private final int[] portalFloraMetadata;
+    private final Block[] islandFlora;
+    private final int[] islandFloraMetadata;
     private final WorldGenerator[] glowshrooms;
 
     private LandmarkDecorations(Block deepslate, Block puzzleMaster, Block twilightPortal, Block twilightFirefly,
-            Block[] portalFlora, int[] portalFloraMetadata, WorldGenerator[] glowshrooms) {
+            Block[] islandFlora, int[] islandFloraMetadata, WorldGenerator[] glowshrooms) {
         this.deepslate = deepslate;
         this.puzzleMaster = puzzleMaster;
         this.twilightPortal = twilightPortal;
         this.twilightFirefly = twilightFirefly;
-        this.portalFlora = portalFlora;
-        this.portalFloraMetadata = portalFloraMetadata;
+        this.islandFlora = islandFlora;
+        this.islandFloraMetadata = islandFloraMetadata;
         this.glowshrooms = glowshrooms;
     }
 
@@ -56,8 +58,9 @@ public final class LandmarkDecorations {
         Block lootGame = Loader.isModLoaded("lootgames") ? LGBlocks.PUZZLE_MASTER : null;
         Block twilight = null;
         Block firefly = null;
-        Block[] flora = null;
-        int[] floraMetadata = null;
+        Block[] flora = { Blocks.tallgrass, Blocks.tallgrass, Blocks.tallgrass, Blocks.tallgrass, Blocks.tallgrass,
+                Blocks.tallgrass, Blocks.red_flower, Blocks.yellow_flower };
+        int[] floraMetadata = { 1, 1, 1, 1, 2, 1, 0, 0 };
         if (Loader.isModLoaded("TwilightForest")) {
             twilight = TFBlocks.portal;
             firefly = TFBlocks.firefly;
@@ -138,9 +141,16 @@ public final class LandmarkDecorations {
 
         if (allowsTwilightPortal(choice, center[0], center[1])) {
             Block poolBlock = leavesPortalUnlit(choice) ? Blocks.water : twilightPortal;
-            placeTwilightPortalIsland(world, perlin, center[0], center[1], poolBlock);
+            placeRiverJunctionIsland(world, perlin, center[0], center[1], poolBlock, 0, true);
         } else if (puzzleMaster != null) {
-            placeRoundedPillar(world, center[0], center[1], RIVER_PILLAR_BOTTOM, RIVER_PILLAR_TOP, 2, deepslate, true);
+            placeRiverJunctionIsland(
+                    world,
+                    perlin,
+                    center[0],
+                    center[1],
+                    LGBlocks.DUNGEON_WALL,
+                    DungeonBrick.Type.FLOOR_SHIELDED.ordinal(),
+                    false);
             world.setBlock(center[0], RIVER_PILLAR_TOP + 2, center[1], puzzleMaster, 0, 2);
         }
     }
@@ -277,62 +287,67 @@ public final class LandmarkDecorations {
     }
 
     /**
-     * Raises a grass island out of the river junction, centred on the landmark, holding an irregular portal pool. Since
-     * TwilightForest#133 a pool only has to be a flood-fillable blob bordered by grass or dirt, so neither the pool nor
-     * the island has to be square. A pool filled with water instead of portal blocks stays a valid pool for a player to
-     * light later.
+     * Raises a grass island out of the river junction, centred on the landmark, around whichever centerpiece the
+     * junction drew. A portal pool is noise-shaped: since TwilightForest#133 a pool only has to be a flood-fillable
+     * blob bordered by grass or dirt, and filling it with water instead of portal blocks leaves a valid pool for a
+     * player to light later. A puzzle floor keeps the rounded shape the minigame is laid out on.
      */
-    private void placeTwilightPortalIsland(World world, NoiseGenerator perlin, int centerX, int centerZ,
-            Block poolBlock) {
-        boolean[] pool = new boolean[PORTAL_ISLAND_SPAN * PORTAL_ISLAND_SPAN];
-        boolean[] land = new boolean[pool.length];
-        for (int dx = -PORTAL_ISLAND_RADIUS; dx <= PORTAL_ISLAND_RADIUS; dx++) {
-            for (int dz = -PORTAL_ISLAND_RADIUS; dz <= PORTAL_ISLAND_RADIUS; dz++) {
+    private void placeRiverJunctionIsland(World world, NoiseGenerator perlin, int centerX, int centerZ, Block coreBlock,
+            int coreMetadata, boolean poolCore) {
+        boolean[] core = new boolean[ISLAND_SPAN * ISLAND_SPAN];
+        boolean[] land = new boolean[core.length];
+        for (int dx = -ISLAND_RADIUS; dx <= ISLAND_RADIUS; dx++) {
+            for (int dz = -ISLAND_RADIUS; dz <= ISLAND_RADIUS; dz++) {
                 int x = centerX + dx;
                 int z = centerZ + dz;
                 double distance = Math.sqrt(dx * dx + dz * dz);
                 int index = islandIndex(dx, dz);
-                pool[index] = distance <= Math.min(3.2f, 2.1f + perlin.noise2(x / 3.5f, z / 3.5f));
-                land[index] = pool[index] || distance <= PORTAL_ISLAND_RADIUS - 2f + perlin.noise2(x / 6f, z / 6f) * 2f;
+                core[index] = poolCore ? distance <= Math.min(3.2f, 2.1f + perlin.noise2(x / 3.5f, z / 3.5f))
+                        : dx * dx + dz * dz <= ISLAND_PLATFORM_RADIUS_SQUARED;
+                land[index] = core[index] || distance <= ISLAND_RADIUS - 2f + perlin.noise2(x / 6f, z / 6f) * 2f;
             }
         }
-        for (int dx = -PORTAL_ISLAND_RADIUS; dx <= PORTAL_ISLAND_RADIUS; dx++) {
-            for (int dz = -PORTAL_ISLAND_RADIUS; dz <= PORTAL_ISLAND_RADIUS; dz++) {
-                // A pool block that is not bordered by land on every side breaks itself back into water.
-                if (hasNeighbor(pool, dx, dz, 2)) land[islandIndex(dx, dz)] = true;
+        for (int dx = -ISLAND_RADIUS; dx <= ISLAND_RADIUS; dx++) {
+            for (int dz = -ISLAND_RADIUS; dz <= ISLAND_RADIUS; dz++) {
+                // A pool block that is not bordered by land on every side breaks itself back into water, and the
+                // puzzle floor reads better with the same collar around it.
+                if (hasNeighbor(core, dx, dz, 2)) land[islandIndex(dx, dz)] = true;
             }
         }
-        for (int dx = -PORTAL_ISLAND_RADIUS; dx <= PORTAL_ISLAND_RADIUS; dx++) {
-            for (int dz = -PORTAL_ISLAND_RADIUS; dz <= PORTAL_ISLAND_RADIUS; dz++) {
+        for (int dx = -ISLAND_RADIUS; dx <= ISLAND_RADIUS; dx++) {
+            for (int dz = -ISLAND_RADIUS; dz <= ISLAND_RADIUS; dz++) {
                 int index = islandIndex(dx, dz);
                 if (!land[index]) continue;
                 int x = centerX + dx;
                 int z = centerZ + dz;
-                boolean portal = pool[index];
-                int surface = portal || !isShore(land, dx, dz) ? RIVER_PILLAR_TOP : RIVER_PILLAR_TOP - 1;
+                boolean centerpiece = core[index];
+                int surface = centerpiece || !isShore(land, dx, dz) ? RIVER_PILLAR_TOP : RIVER_PILLAR_TOP - 1;
                 for (int y = RIVER_PILLAR_BOTTOM; y <= surface; y++) {
-                    Block block = y == surface ? portal ? poolBlock : Blocks.grass
+                    boolean top = y == surface;
+                    Block block = top ? centerpiece ? coreBlock : Blocks.grass
                             : y > surface - 3 ? Blocks.dirt : deepslate;
-                    world.setBlock(x, y, z, block, 0, 2);
+                    world.setBlock(x, y, z, block, top && centerpiece ? coreMetadata : 0, 2);
                 }
-                if (portal) continue;
-                int poolDistance = 0;
-                while (poolDistance < 3 && !hasNeighbor(pool, dx, dz, poolDistance)) poolDistance++;
-                decoratePortalIsland(world, x, surface + 1, z, poolDistance);
+                if (centerpiece) continue;
+                int coreDistance = 0;
+                while (coreDistance < 3 && !hasNeighbor(core, dx, dz, coreDistance)) coreDistance++;
+                decorateIslandSurface(world, x, surface + 1, z, coreDistance, poolCore);
             }
         }
     }
 
-    /** Plants the clearing around the pool and drops the odd mossy boulder further out. */
-    private void decoratePortalIsland(World world, int x, int y, int z, int poolDistance) {
+    /** Plants the clearing around the centerpiece and drops the odd mossy boulder further out. */
+    private void decorateIslandSurface(World world, int x, int y, int z, int coreDistance, boolean poolCore) {
         if (!world.isAirBlock(x, y, z)) return;
         long roll = mix(world.getSeed() ^ (long) x * 0x9E3779B97F4A7C15L ^ (long) z * 0xC2B2AE3D27D4EB4FL);
         int choice = (int) (roll >>> 8 & 31L);
-        if (poolDistance <= 1 || choice < 13) {
+        // Keep the ring touching a puzzle floor clear, so nothing grows into the minigame.
+        if (coreDistance <= 1 && !poolCore) return;
+        if (coreDistance <= 1 || choice < 13) {
             // Keeping a nature block over every bordering grass block lets a broken portal be relit.
             int flora = (int) (roll & 7L);
-            world.setBlock(x, y, z, portalFlora[flora], portalFloraMetadata[flora], 2);
-        } else if (choice == 13 && poolDistance >= 3) {
+            world.setBlock(x, y, z, islandFlora[flora], islandFloraMetadata[flora], 2);
+        } else if (choice == 13 && coreDistance >= 3) {
             world.setBlock(x, y, z, Blocks.mossy_cobblestone, 0, 2);
             if ((roll & 8L) != 0L) world.setBlock(x, y + 1, z, Blocks.cobblestone, 0, 2);
             // Metadata 1 clings to the boulder we just placed one block to the west.
@@ -343,12 +358,11 @@ public final class LandmarkDecorations {
     }
 
     private static int islandIndex(int dx, int dz) {
-        return (dx + PORTAL_ISLAND_RADIUS) * PORTAL_ISLAND_SPAN + dz + PORTAL_ISLAND_RADIUS;
+        return (dx + ISLAND_RADIUS) * ISLAND_SPAN + dz + ISLAND_RADIUS;
     }
 
     private static boolean isIsland(boolean[] grid, int dx, int dz) {
-        return Math.abs(dx) <= PORTAL_ISLAND_RADIUS && Math.abs(dz) <= PORTAL_ISLAND_RADIUS
-                && grid[islandIndex(dx, dz)];
+        return Math.abs(dx) <= ISLAND_RADIUS && Math.abs(dz) <= ISLAND_RADIUS && grid[islandIndex(dx, dz)];
     }
 
     private static boolean hasNeighbor(boolean[] grid, int dx, int dz, int radius) {

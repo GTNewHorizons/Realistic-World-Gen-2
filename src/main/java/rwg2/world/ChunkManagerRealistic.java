@@ -126,7 +126,7 @@ public class ChunkManagerRealistic extends WorldChunkManager {
     }
 
     public ChunkManagerRealistic(long seed, boolean continental) {
-        this(seed, continental, 1400f, 500f);
+        this(seed, continental, 1400f * ConfigRWG.biomeSizeMultiplier, 500f * ConfigRWG.biomeSizeMultiplier);
     }
 
     public ChunkManagerRealistic(long seed, boolean continental, float climateWidth, float biomeWidth) {

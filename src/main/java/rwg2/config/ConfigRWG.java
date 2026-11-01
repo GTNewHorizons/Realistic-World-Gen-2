@@ -40,6 +40,7 @@ public class ConfigRWG {
     public static float averageLandmarksPerTypeAndContinent = 0.25f;
     public static int landmassOffsetX = 0;
     public static int landmassOffsetZ = 0;
+    public static float biomeSizeMultiplier = 1f;
     public static int biomeOffsetX = 0;
     public static int biomeOffsetZ = 0;
     public static boolean enableWorldgenDiagnostics = false;
@@ -178,6 +179,14 @@ public class ConfigRWG {
                     "Approximate average number of each enabled landmark type per continent. Candidate probability "
                             + "is corrected for the configured continental land fraction. "
                             + worldgenWarning);
+            biomeSizeMultiplier = config.getFloat(
+                    "Biome Size Multiplier",
+                    CONTINENTAL_CATEGORY,
+                    1f,
+                    0.25f,
+                    10f,
+                    "Scales biome extent by this factor, conceptually similar to vanilla Large Biomes. "
+                            + worldgenWarning);
             config.setCategoryPropertyOrder(
                     CONTINENTAL_CATEGORY,
                     Arrays.asList(
@@ -190,7 +199,8 @@ public class ConfigRWG {
                             "Maximum Island Width",
                             "Island Placement Chance",
                             "Large Island Volcano Chance",
-                            "Average Landmarks Per Type And Continent"));
+                            "Average Landmarks Per Type And Continent",
+                            "Biome Size Multiplier"));
             String expertCategory = "Expert / Worldgen Migration";
             config.setCategoryComment(
                     expertCategory,

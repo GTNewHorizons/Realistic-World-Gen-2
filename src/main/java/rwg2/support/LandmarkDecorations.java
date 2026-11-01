@@ -137,7 +137,8 @@ public final class LandmarkDecorations {
         if ((choice & 1L) != 0L) return;
 
         if (allowsTwilightPortal(choice, center[0], center[1])) {
-            placeTwilightPortalIsland(world, perlin, center[0], center[1]);
+            Block poolBlock = leavesPortalUnlit(choice) ? Blocks.water : twilightPortal;
+            placeTwilightPortalIsland(world, perlin, center[0], center[1], poolBlock);
         } else if (puzzleMaster != null) {
             placeRoundedPillar(world, center[0], center[1], RIVER_PILLAR_BOTTOM, RIVER_PILLAR_TOP, 2, deepslate, true);
             world.setBlock(center[0], RIVER_PILLAR_TOP + 2, center[1], puzzleMaster, 0, 2);
@@ -271,12 +272,18 @@ public final class LandmarkDecorations {
         return (choice >>> 1 & 0xFFFFFFL) < (long) (ConfigRWG.twilightForestPortalChance * 0x1000000L);
     }
 
+    private static boolean leavesPortalUnlit(long choice) {
+        return (choice >>> 40 & 0xFFFFFFL) < (long) (ConfigRWG.twilightForestPortalUnlitChance * 0x1000000L);
+    }
+
     /**
      * Raises a grass island out of the river junction, centred on the landmark, holding an irregular portal pool. Since
      * TwilightForest#133 a pool only has to be a flood-fillable blob bordered by grass or dirt, so neither the pool nor
-     * the island has to be square.
+     * the island has to be square. A pool filled with water instead of portal blocks stays a valid pool for a player to
+     * light later.
      */
-    private void placeTwilightPortalIsland(World world, NoiseGenerator perlin, int centerX, int centerZ) {
+    private void placeTwilightPortalIsland(World world, NoiseGenerator perlin, int centerX, int centerZ,
+            Block poolBlock) {
         boolean[] pool = new boolean[PORTAL_ISLAND_SPAN * PORTAL_ISLAND_SPAN];
         boolean[] land = new boolean[pool.length];
         for (int dx = -PORTAL_ISLAND_RADIUS; dx <= PORTAL_ISLAND_RADIUS; dx++) {
@@ -304,7 +311,7 @@ public final class LandmarkDecorations {
                 boolean portal = pool[index];
                 int surface = portal || !isShore(land, dx, dz) ? RIVER_PILLAR_TOP : RIVER_PILLAR_TOP - 1;
                 for (int y = RIVER_PILLAR_BOTTOM; y <= surface; y++) {
-                    Block block = y == surface ? portal ? twilightPortal : Blocks.grass
+                    Block block = y == surface ? portal ? poolBlock : Blocks.grass
                             : y > surface - 3 ? Blocks.dirt : deepslate;
                     world.setBlock(x, y, z, block, 0, 2);
                 }

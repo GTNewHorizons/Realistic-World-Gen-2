@@ -40,6 +40,7 @@ public class ConfigRWG {
     public static float largeIslandVolcanoChance = 0.15f;
     public static float averageLandmarksPerTypeAndContinent = 0.25f;
     public static float twilightForestPortalChance = 0.25f;
+    public static float twilightForestPortalUnlitChance = 0.5f;
     public static int twilightForestPortalMinimumSpawnDistance = 2000;
     public static int landmassOffsetX = 0;
     public static int landmassOffsetZ = 0;
@@ -203,6 +204,14 @@ public class ConfigRWG {
                     "Chance for an eligible river junction landmark to carry a ready-made Twilight Forest portal "
                             + "instead of a LootGames puzzle. 0 disables these portals entirely. Requires "
                             + "Twilight Forest.");
+            twilightForestPortalUnlitChance = config.getFloat(
+                    "Twilight Forest Portal Unlit Chance",
+                    LANDMARK_DECORATION_CATEGORY,
+                    0.5f,
+                    0f,
+                    1f,
+                    "Chance for one of those portals to generate as a plain water pool that a player still has to "
+                            + "light with Twilight Forest's activation item. 1 leaves every pool unlit.");
             twilightForestPortalMinimumSpawnDistance = config.getInt(
                     "Twilight Forest Portal Minimum Spawn Distance",
                     LANDMARK_DECORATION_CATEGORY,

@@ -14,6 +14,7 @@ import mods.natura.worldgen.GlowshroomGenBlueGreen;
 import mods.natura.worldgen.GlowshroomGenPurple;
 import ru.timeconqueror.lootgames.registry.LGBlocks;
 import rwg2.biomes.realistic.land.RealisticBiomeMountainChain;
+import rwg2.config.ConfigRWG;
 import rwg2.map.LavaCaveLandmark;
 import rwg2.util.ContinentalNoise;
 import rwg2.util.NoiseGenerator;
@@ -106,7 +107,7 @@ public final class LandmarkDecorations {
         long choice = mix(world.getSeed() ^ key ^ 0x94D049BB133111EBL);
         if ((choice & 1L) != 0L) return;
 
-        if ((choice >>> 1 & 3L) == 0L && twilightPortal != null) {
+        if (allowsTwilightPortal(choice, center[0], center[1])) {
             placeSquarePillar(world, center[0], center[1], 40, RIVER_PILLAR_TOP, 8, deepslate);
             placeTwilightPortal(world, center[0], RIVER_PILLAR_TOP, center[1]);
         } else if (puzzleMaster != null) {
@@ -244,6 +245,13 @@ public final class LandmarkDecorations {
                 world.setBlock(x, bottom + y, z, frame ? Blocks.obsidian : Blocks.portal, alongZ ? 2 : 1, 2);
             }
         }
+    }
+
+    private boolean allowsTwilightPortal(long choice, int centerX, int centerZ) {
+        if (twilightPortal == null || ConfigRWG.twilightForestPortalChance <= 0f) return false;
+        long minimumDistance = ConfigRWG.twilightForestPortalMinimumSpawnDistance;
+        if ((long) centerX * centerX + (long) centerZ * centerZ < minimumDistance * minimumDistance) return false;
+        return (choice >>> 1 & 0xFFFFFFL) < (long) (ConfigRWG.twilightForestPortalChance * 0x1000000L);
     }
 
     private void placeTwilightPortal(World world, int centerX, int y, int centerZ) {

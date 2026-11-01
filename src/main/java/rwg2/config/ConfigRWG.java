@@ -12,6 +12,7 @@ import cpw.mods.fml.relauncher.FMLInjectionData;
 public class ConfigRWG {
 
     private static final String CONTINENTAL_CATEGORY = "Continental RWG";
+    private static final String LANDMARK_DECORATION_CATEGORY = "Landmark Decorations";
     public static final String DEBUG_CATEGORY = "Debug";
     public static final String ENABLE_WORLDGEN_DIAGNOSTICS = "Enable Worldgen Diagnostics";
     private static final int[] DEFAULT_BIOME_IDS = { 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312,
@@ -38,6 +39,8 @@ public class ConfigRWG {
     public static float islandPlacementChance = 0.30f;
     public static float largeIslandVolcanoChance = 0.15f;
     public static float averageLandmarksPerTypeAndContinent = 0.25f;
+    public static float twilightForestPortalChance = 0.25f;
+    public static int twilightForestPortalMinimumSpawnDistance = 2000;
     public static int landmassOffsetX = 0;
     public static int landmassOffsetZ = 0;
     public static float biomeSizeMultiplier = 1f;
@@ -187,6 +190,28 @@ public class ConfigRWG {
                     10f,
                     "Scales biome extent by this factor, conceptually similar to vanilla Large Biomes. "
                             + worldgenWarning);
+            config.setCategoryComment(
+                    LANDMARK_DECORATION_CATEGORY,
+                    "Centerpieces placed on top of RWG's landmark pillars. These only apply to chunks generated "
+                            + "after the change.");
+            twilightForestPortalChance = config.getFloat(
+                    "Twilight Forest Portal Chance",
+                    LANDMARK_DECORATION_CATEGORY,
+                    0.25f,
+                    0f,
+                    1f,
+                    "Chance for an eligible river junction landmark to carry a ready-made Twilight Forest portal "
+                            + "instead of a LootGames puzzle. 0 disables these portals entirely. Requires "
+                            + "Twilight Forest.");
+            twilightForestPortalMinimumSpawnDistance = config.getInt(
+                    "Twilight Forest Portal Minimum Spawn Distance",
+                    LANDMARK_DECORATION_CATEGORY,
+                    2000,
+                    0,
+                    30000000,
+                    "Twilight Forest portals are not placed within this many blocks of x=0, z=0, so a shared seed "
+                            + "cannot point players at a portal next to spawn. Junctions inside the radius fall back "
+                            + "to a LootGames puzzle.");
             config.setCategoryPropertyOrder(
                     CONTINENTAL_CATEGORY,
                     Arrays.asList(

@@ -19,6 +19,7 @@ import rwg2.map.LavaCaveLandmark;
 import rwg2.util.ContinentalNoise;
 import rwg2.util.NoiseGenerator;
 import rwg2.world.ChunkManagerRealistic;
+import twilightforest.block.BlockTFPlant;
 import twilightforest.block.TFBlocks;
 
 /** Optional mod-backed centerpieces and flora for RWG's underground landmarks. */
@@ -27,36 +28,63 @@ public final class LandmarkDecorations {
     private static final int LAVA_LEVEL = 25;
     private static final int LAVA_PILLAR_TOP = 37;
     private static final int RIVER_PILLAR_TOP = 64;
+    private static final int RIVER_PILLAR_BOTTOM = 40;
+    private static final int PORTAL_ISLAND_RADIUS = 7;
+    private static final int PORTAL_ISLAND_SPAN = PORTAL_ISLAND_RADIUS * 2 + 1;
 
     private final Block deepslate;
     private final Block puzzleMaster;
     private final Block twilightPortal;
+    private final Block twilightFirefly;
+    private final Block[] portalFlora;
+    private final int[] portalFloraMetadata;
     private final WorldGenerator[] glowshrooms;
 
-    private LandmarkDecorations(Block deepslate, Block puzzleMaster, Block twilightPortal,
-            WorldGenerator[] glowshrooms) {
+    private LandmarkDecorations(Block deepslate, Block puzzleMaster, Block twilightPortal, Block twilightFirefly,
+            Block[] portalFlora, int[] portalFloraMetadata, WorldGenerator[] glowshrooms) {
         this.deepslate = deepslate;
         this.puzzleMaster = puzzleMaster;
         this.twilightPortal = twilightPortal;
+        this.twilightFirefly = twilightFirefly;
+        this.portalFlora = portalFlora;
+        this.portalFloraMetadata = portalFloraMetadata;
         this.glowshrooms = glowshrooms;
     }
 
     public static LandmarkDecorations create() {
         if (!Loader.isModLoaded("etfuturum")) return null;
         Block lootGame = Loader.isModLoaded("lootgames") ? LGBlocks.PUZZLE_MASTER : null;
-        Block twilight = Loader.isModLoaded("TwilightForest") ? TFBlocks.portal : null;
+        Block twilight = null;
+        Block firefly = null;
+        Block[] flora = null;
+        int[] floraMetadata = null;
+        if (Loader.isModLoaded("TwilightForest")) {
+            twilight = TFBlocks.portal;
+            firefly = TFBlocks.firefly;
+            flora = new Block[] { TFBlocks.plant, TFBlocks.plant, TFBlocks.plant, TFBlocks.plant, TFBlocks.plant,
+                    Blocks.tallgrass, Blocks.red_flower, Blocks.yellow_flower };
+            floraMetadata = new int[] { BlockTFPlant.META_FORESTGRASS, BlockTFPlant.META_FORESTGRASS,
+                    BlockTFPlant.META_MAYAPPLE, BlockTFPlant.META_CLOVERPATCH, BlockTFPlant.META_FIDDLEHEAD, 1, 0, 0 };
+        }
         WorldGenerator[] naturaGlowshrooms = Loader.isModLoaded("Natura")
                 ? new WorldGenerator[] { new GlowshroomGenBlueGreen(false), new GlowshroomGenPurple(false) }
                 : null;
         Block deep = ModBlocks.DEEPSLATE.get();
-        return new LandmarkDecorations(deep == null ? Blocks.stone : deep, lootGame, twilight, naturaGlowshrooms);
+        return new LandmarkDecorations(
+                deep == null ? Blocks.stone : deep,
+                lootGame,
+                twilight,
+                firefly,
+                flora,
+                floraMetadata,
+                naturaGlowshrooms);
     }
 
     public void decorate(World world, ChunkManagerRealistic manager, NoiseGenerator perlin, int chunkX, int chunkZ) {
         activateCeilingLavaSources(world, manager, chunkX, chunkZ);
         decorateLavaShore(world, manager, perlin, chunkX, chunkZ);
         decorateLavaCenter(world, manager, chunkX, chunkZ);
-        decorateRiverJunction(world, manager, chunkX, chunkZ);
+        decorateRiverJunction(world, manager, perlin, chunkX, chunkZ);
     }
 
     private static void activateCeilingLavaSources(World world, ChunkManagerRealistic manager, int chunkX, int chunkZ) {
@@ -95,7 +123,8 @@ public final class LandmarkDecorations {
         }
     }
 
-    private void decorateRiverJunction(World world, ChunkManagerRealistic manager, int chunkX, int chunkZ) {
+    private void decorateRiverJunction(World world, ChunkManagerRealistic manager, NoiseGenerator perlin, int chunkX,
+            int chunkZ) {
         int[] center = findJunctionCenter(manager, chunkX, chunkZ);
         if (center == null || Math.floorDiv(center[0], 16) * 16 != chunkX
                 || Math.floorDiv(center[1], 16) * 16 != chunkZ)
@@ -108,10 +137,9 @@ public final class LandmarkDecorations {
         if ((choice & 1L) != 0L) return;
 
         if (allowsTwilightPortal(choice, center[0], center[1])) {
-            placeSquarePillar(world, center[0], center[1], 40, RIVER_PILLAR_TOP, 8, deepslate);
-            placeTwilightPortal(world, center[0], RIVER_PILLAR_TOP, center[1]);
+            placeTwilightPortalIsland(world, perlin, center[0], center[1]);
         } else if (puzzleMaster != null) {
-            placeRoundedPillar(world, center[0], center[1], 40, RIVER_PILLAR_TOP, 2, deepslate, true);
+            placeRoundedPillar(world, center[0], center[1], RIVER_PILLAR_BOTTOM, RIVER_PILLAR_TOP, 2, deepslate, true);
             world.setBlock(center[0], RIVER_PILLAR_TOP + 2, center[1], puzzleMaster, 0, 2);
         }
     }
@@ -225,17 +253,6 @@ public final class LandmarkDecorations {
         }
     }
 
-    private static void placeSquarePillar(World world, int centerX, int centerZ, int bottom, int top, int width,
-            Block block) {
-        int minimumOffset = -width / 2;
-        int maximumOffset = minimumOffset + width - 1;
-        for (int dx = minimumOffset; dx <= maximumOffset; dx++) {
-            for (int dz = minimumOffset; dz <= maximumOffset; dz++) {
-                for (int y = bottom; y <= top; y++) world.setBlock(centerX + dx, y, centerZ + dz, block, 0, 2);
-            }
-        }
-    }
-
     private static void placeNetherPortal(World world, int centerX, int bottom, int centerZ, boolean alongZ) {
         for (int horizontal = -1; horizontal <= 2; horizontal++) {
             for (int y = 0; y < 5; y++) {
@@ -254,13 +271,92 @@ public final class LandmarkDecorations {
         return (choice >>> 1 & 0xFFFFFFL) < (long) (ConfigRWG.twilightForestPortalChance * 0x1000000L);
     }
 
-    private void placeTwilightPortal(World world, int centerX, int y, int centerZ) {
-        for (int dx = -1; dx <= 2; dx++) {
-            for (int dz = -1; dz <= 2; dz++) {
-                boolean portal = dx >= 0 && dx <= 1 && dz >= 0 && dz <= 1;
-                world.setBlock(centerX + dx, y, centerZ + dz, portal ? twilightPortal : Blocks.grass, 0, 2);
+    /**
+     * Raises a grass island out of the river junction, centred on the landmark, holding an irregular portal pool. Since
+     * TwilightForest#133 a pool only has to be a flood-fillable blob bordered by grass or dirt, so neither the pool nor
+     * the island has to be square.
+     */
+    private void placeTwilightPortalIsland(World world, NoiseGenerator perlin, int centerX, int centerZ) {
+        boolean[] pool = new boolean[PORTAL_ISLAND_SPAN * PORTAL_ISLAND_SPAN];
+        boolean[] land = new boolean[pool.length];
+        for (int dx = -PORTAL_ISLAND_RADIUS; dx <= PORTAL_ISLAND_RADIUS; dx++) {
+            for (int dz = -PORTAL_ISLAND_RADIUS; dz <= PORTAL_ISLAND_RADIUS; dz++) {
+                int x = centerX + dx;
+                int z = centerZ + dz;
+                double distance = Math.sqrt(dx * dx + dz * dz);
+                int index = islandIndex(dx, dz);
+                pool[index] = distance <= Math.min(3.2f, 2.1f + perlin.noise2(x / 3.5f, z / 3.5f));
+                land[index] = pool[index] || distance <= PORTAL_ISLAND_RADIUS - 2f + perlin.noise2(x / 6f, z / 6f) * 2f;
             }
         }
+        for (int dx = -PORTAL_ISLAND_RADIUS; dx <= PORTAL_ISLAND_RADIUS; dx++) {
+            for (int dz = -PORTAL_ISLAND_RADIUS; dz <= PORTAL_ISLAND_RADIUS; dz++) {
+                // A pool block that is not bordered by land on every side breaks itself back into water.
+                if (hasNeighbor(pool, dx, dz, 2)) land[islandIndex(dx, dz)] = true;
+            }
+        }
+        for (int dx = -PORTAL_ISLAND_RADIUS; dx <= PORTAL_ISLAND_RADIUS; dx++) {
+            for (int dz = -PORTAL_ISLAND_RADIUS; dz <= PORTAL_ISLAND_RADIUS; dz++) {
+                int index = islandIndex(dx, dz);
+                if (!land[index]) continue;
+                int x = centerX + dx;
+                int z = centerZ + dz;
+                boolean portal = pool[index];
+                int surface = portal || !isShore(land, dx, dz) ? RIVER_PILLAR_TOP : RIVER_PILLAR_TOP - 1;
+                for (int y = RIVER_PILLAR_BOTTOM; y <= surface; y++) {
+                    Block block = y == surface ? portal ? twilightPortal : Blocks.grass
+                            : y > surface - 3 ? Blocks.dirt : deepslate;
+                    world.setBlock(x, y, z, block, 0, 2);
+                }
+                if (portal) continue;
+                int poolDistance = 0;
+                while (poolDistance < 3 && !hasNeighbor(pool, dx, dz, poolDistance)) poolDistance++;
+                decoratePortalIsland(world, x, surface + 1, z, poolDistance);
+            }
+        }
+    }
+
+    /** Plants the clearing around the pool and drops the odd mossy boulder further out. */
+    private void decoratePortalIsland(World world, int x, int y, int z, int poolDistance) {
+        if (!world.isAirBlock(x, y, z)) return;
+        long roll = mix(world.getSeed() ^ (long) x * 0x9E3779B97F4A7C15L ^ (long) z * 0xC2B2AE3D27D4EB4FL);
+        int choice = (int) (roll >>> 8 & 31L);
+        if (poolDistance <= 1 || choice < 13) {
+            // Keeping a nature block over every bordering grass block lets a broken portal be relit.
+            int flora = (int) (roll & 7L);
+            world.setBlock(x, y, z, portalFlora[flora], portalFloraMetadata[flora], 2);
+        } else if (choice == 13 && poolDistance >= 3) {
+            world.setBlock(x, y, z, Blocks.mossy_cobblestone, 0, 2);
+            if ((roll & 8L) != 0L) world.setBlock(x, y + 1, z, Blocks.cobblestone, 0, 2);
+            // Metadata 1 clings to the boulder we just placed one block to the west.
+            if (twilightFirefly != null && world.isAirBlock(x + 1, y, z)) {
+                world.setBlock(x + 1, y, z, twilightFirefly, 1, 2);
+            }
+        }
+    }
+
+    private static int islandIndex(int dx, int dz) {
+        return (dx + PORTAL_ISLAND_RADIUS) * PORTAL_ISLAND_SPAN + dz + PORTAL_ISLAND_RADIUS;
+    }
+
+    private static boolean isIsland(boolean[] grid, int dx, int dz) {
+        return Math.abs(dx) <= PORTAL_ISLAND_RADIUS && Math.abs(dz) <= PORTAL_ISLAND_RADIUS
+                && grid[islandIndex(dx, dz)];
+    }
+
+    private static boolean hasNeighbor(boolean[] grid, int dx, int dz, int radius) {
+        for (int offsetX = -radius; offsetX <= radius; offsetX++) {
+            for (int offsetZ = -radius; offsetZ <= radius; offsetZ++) {
+                if (isIsland(grid, dx + offsetX, dz + offsetZ)) return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isShore(boolean[] land, int dx, int dz) {
+        return !isIsland(land, dx - 1, dz) || !isIsland(land, dx + 1, dz)
+                || !isIsland(land, dx, dz - 1)
+                || !isIsland(land, dx, dz + 1);
     }
 
     private static long mix(long value) {

@@ -33,6 +33,11 @@ public final class LandmarkDecorations {
     private static final int ISLAND_SPAN = ISLAND_RADIUS * 2 + 1;
     /** Keeps the puzzle floor the size the rounded pillar used to give it. */
     private static final int ISLAND_PLATFORM_RADIUS_SQUARED = 5;
+    /**
+     * LootGames lays its board out over a 21x21 area around the floor, which is wider than the island, so the floor
+     * sits on a dais above the grass and everything the island grows stays below it.
+     */
+    private static final int PUZZLE_FLOOR_TOP = RIVER_PILLAR_TOP + 2;
 
     private final Block deepslate;
     private final Block puzzleMaster;
@@ -140,18 +145,15 @@ public final class LandmarkDecorations {
         if ((choice & 1L) != 0L) return;
 
         if (allowsTwilightPortal(choice, center[0], center[1])) {
-            Block poolBlock = leavesPortalUnlit(choice) ? Blocks.water : twilightPortal;
-            placeRiverJunctionIsland(world, perlin, center[0], center[1], poolBlock, 0, true);
-        } else if (puzzleMaster != null) {
             placeRiverJunctionIsland(
                     world,
                     perlin,
                     center[0],
                     center[1],
-                    LGBlocks.DUNGEON_WALL,
-                    DungeonBrick.Type.FLOOR_SHIELDED.ordinal(),
-                    false);
-            world.setBlock(center[0], RIVER_PILLAR_TOP + 2, center[1], puzzleMaster, 0, 2);
+                    leavesPortalUnlit(choice) ? Blocks.water : twilightPortal);
+        } else if (puzzleMaster != null) {
+            placeRiverJunctionIsland(world, perlin, center[0], center[1], null);
+            world.setBlock(center[0], PUZZLE_FLOOR_TOP + 2, center[1], puzzleMaster, 0, 2);
         }
     }
 
@@ -290,10 +292,11 @@ public final class LandmarkDecorations {
      * Raises a grass island out of the river junction, centred on the landmark, around whichever centerpiece the
      * junction drew. A portal pool is noise-shaped: since TwilightForest#133 a pool only has to be a flood-fillable
      * blob bordered by grass or dirt, and filling it with water instead of portal blocks leaves a valid pool for a
-     * player to light later. A puzzle floor keeps the rounded shape the minigame is laid out on.
+     * player to light later. A null pool block raises the rounded puzzle dais instead.
      */
-    private void placeRiverJunctionIsland(World world, NoiseGenerator perlin, int centerX, int centerZ, Block coreBlock,
-            int coreMetadata, boolean poolCore) {
+    private void placeRiverJunctionIsland(World world, NoiseGenerator perlin, int centerX, int centerZ,
+            Block poolBlock) {
+        boolean poolCore = poolBlock != null;
         boolean[] core = new boolean[ISLAND_SPAN * ISLAND_SPAN];
         boolean[] land = new boolean[core.length];
         for (int dx = -ISLAND_RADIUS; dx <= ISLAND_RADIUS; dx++) {
@@ -321,18 +324,43 @@ public final class LandmarkDecorations {
                 int x = centerX + dx;
                 int z = centerZ + dz;
                 boolean centerpiece = core[index];
+                if (centerpiece && !poolCore) {
+                    placePuzzleDais(world, x, z);
+                    continue;
+                }
                 int surface = centerpiece || !isShore(land, dx, dz) ? RIVER_PILLAR_TOP : RIVER_PILLAR_TOP - 1;
                 for (int y = RIVER_PILLAR_BOTTOM; y <= surface; y++) {
                     boolean top = y == surface;
-                    Block block = top ? centerpiece ? coreBlock : Blocks.grass
+                    Block block = top ? centerpiece ? poolBlock : Blocks.grass
                             : y > surface - 3 ? Blocks.dirt : deepslate;
-                    world.setBlock(x, y, z, block, top && centerpiece ? coreMetadata : 0, 2);
+                    world.setBlock(x, y, z, block, 0, 2);
                 }
                 if (centerpiece) continue;
                 int coreDistance = 0;
                 while (coreDistance < 3 && !hasNeighbor(core, dx, dz, coreDistance)) coreDistance++;
+                if (!poolCore && coreDistance == 1) {
+                    world.setBlock(
+                            x,
+                            RIVER_PILLAR_TOP + 1,
+                            z,
+                            LGBlocks.DUNGEON_WALL,
+                            DungeonBrick.Type.WALL.ordinal(),
+                            2);
+                    continue;
+                }
                 decorateIslandSurface(world, x, surface + 1, z, coreDistance, poolCore);
             }
+        }
+    }
+
+    /** Raises one column of the dais the minigame floor is laid out on, out of the island's grass. */
+    private void placePuzzleDais(World world, int x, int z) {
+        for (int y = RIVER_PILLAR_BOTTOM; y < RIVER_PILLAR_TOP; y++) {
+            world.setBlock(x, y, z, y > RIVER_PILLAR_TOP - 3 ? Blocks.dirt : deepslate, 0, 2);
+        }
+        for (int y = RIVER_PILLAR_TOP; y <= PUZZLE_FLOOR_TOP; y++) {
+            DungeonBrick.Type type = y == PUZZLE_FLOOR_TOP ? DungeonBrick.Type.FLOOR_SHIELDED : DungeonBrick.Type.WALL;
+            world.setBlock(x, y, z, LGBlocks.DUNGEON_WALL, type.ordinal(), 2);
         }
     }
 
@@ -341,15 +369,14 @@ public final class LandmarkDecorations {
         if (!world.isAirBlock(x, y, z)) return;
         long roll = mix(world.getSeed() ^ (long) x * 0x9E3779B97F4A7C15L ^ (long) z * 0xC2B2AE3D27D4EB4FL);
         int choice = (int) (roll >>> 8 & 31L);
-        // Keep the ring touching a puzzle floor clear, so nothing grows into the minigame.
-        if (coreDistance <= 1 && !poolCore) return;
         if (coreDistance <= 1 || choice < 13) {
             // Keeping a nature block over every bordering grass block lets a broken portal be relit.
             int flora = (int) (roll & 7L);
             world.setBlock(x, y, z, islandFlora[flora], islandFloraMetadata[flora], 2);
         } else if (choice == 13 && coreDistance >= 3) {
             world.setBlock(x, y, z, Blocks.mossy_cobblestone, 0, 2);
-            if ((roll & 8L) != 0L) world.setBlock(x, y + 1, z, Blocks.cobblestone, 0, 2);
+            // A second block would reach the puzzle floor and leave no room for the board.
+            if (poolCore && (roll & 8L) != 0L) world.setBlock(x, y + 1, z, Blocks.cobblestone, 0, 2);
             // Metadata 1 clings to the boulder we just placed one block to the west.
             if (twilightFirefly != null && world.isAirBlock(x + 1, y, z)) {
                 world.setBlock(x + 1, y, z, twilightFirefly, 1, 2);

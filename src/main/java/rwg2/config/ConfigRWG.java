@@ -41,7 +41,7 @@ public class ConfigRWG {
     public static float averageLandmarksPerTypeAndContinent = 0.25f;
     public static float twilightForestPortalChance = 0.25f;
     public static float twilightForestPortalUnlitChance = 0.5f;
-    public static int twilightForestPortalMinimumSpawnDistance = 2000;
+    public static int twilightForestPortalMinimumSpawnDistance = 3500;
     public static int landmassOffsetX = 0;
     public static int landmassOffsetZ = 0;
     public static float biomeSizeMultiplier = 1f;

@@ -38,6 +38,7 @@ public final class LandmarkDecorations {
      * sits on a dais above the grass and everything the island grows stays below it.
      */
     private static final int PUZZLE_FLOOR_TOP = RIVER_PILLAR_TOP + 2;
+    private static final int ISLAND_DEPTH = RIVER_PILLAR_TOP - RIVER_PILLAR_BOTTOM;
 
     private final Block deepslate;
     private final Block puzzleMaster;
@@ -317,6 +318,9 @@ public final class LandmarkDecorations {
                 if (hasNeighbor(core, dx, dz, 2)) land[islandIndex(dx, dz)] = true;
             }
         }
+        float[] inset = measureIslandInset(land);
+        float reach = 1f;
+        for (float value : inset) reach = Math.max(reach, value);
         for (int dx = -ISLAND_RADIUS; dx <= ISLAND_RADIUS; dx++) {
             for (int dz = -ISLAND_RADIUS; dz <= ISLAND_RADIUS; dz++) {
                 int index = islandIndex(dx, dz);
@@ -324,12 +328,14 @@ public final class LandmarkDecorations {
                 int x = centerX + dx;
                 int z = centerZ + dz;
                 boolean centerpiece = core[index];
+                int surface = centerpiece || !isShore(land, dx, dz) ? RIVER_PILLAR_TOP : RIVER_PILLAR_TOP - 1;
+                float depth = 1f + (ISLAND_DEPTH - 1) * inset[index] / reach + perlin.noise2(x / 5f, z / 5f) * 2f;
+                int bottom = Math.max(RIVER_PILLAR_BOTTOM, surface - (int) depth);
                 if (centerpiece && !poolCore) {
-                    placePuzzleDais(world, x, z);
+                    placePuzzleDais(world, x, z, bottom);
                     continue;
                 }
-                int surface = centerpiece || !isShore(land, dx, dz) ? RIVER_PILLAR_TOP : RIVER_PILLAR_TOP - 1;
-                for (int y = RIVER_PILLAR_BOTTOM; y <= surface; y++) {
+                for (int y = bottom; y <= surface; y++) {
                     boolean top = y == surface;
                     Block block = top ? centerpiece ? poolBlock : Blocks.grass
                             : y > surface - 3 ? Blocks.dirt : deepslate;
@@ -353,9 +359,33 @@ public final class LandmarkDecorations {
         }
     }
 
+    /**
+     * Distance from each land cell to the nearest cell the island does not cover, which the underside tapers along so
+     * the island sits on a steep cone rather than a shaft of its own width.
+     */
+    private static float[] measureIslandInset(boolean[] land) {
+        float[] inset = new float[land.length];
+        for (int dx = -ISLAND_RADIUS; dx <= ISLAND_RADIUS; dx++) {
+            for (int dz = -ISLAND_RADIUS; dz <= ISLAND_RADIUS; dz++) {
+                if (!isIsland(land, dx, dz)) continue;
+                int nearest = Integer.MAX_VALUE;
+                for (int otherX = -ISLAND_RADIUS - 1; otherX <= ISLAND_RADIUS + 1; otherX++) {
+                    for (int otherZ = -ISLAND_RADIUS - 1; otherZ <= ISLAND_RADIUS + 1; otherZ++) {
+                        if (isIsland(land, otherX, otherZ)) continue;
+                        int offsetX = dx - otherX;
+                        int offsetZ = dz - otherZ;
+                        nearest = Math.min(nearest, offsetX * offsetX + offsetZ * offsetZ);
+                    }
+                }
+                inset[islandIndex(dx, dz)] = (float) Math.sqrt(nearest);
+            }
+        }
+        return inset;
+    }
+
     /** Raises one column of the dais the minigame floor is laid out on, out of the island's grass. */
-    private void placePuzzleDais(World world, int x, int z) {
-        for (int y = RIVER_PILLAR_BOTTOM; y < RIVER_PILLAR_TOP; y++) {
+    private void placePuzzleDais(World world, int x, int z, int bottom) {
+        for (int y = bottom; y < RIVER_PILLAR_TOP; y++) {
             world.setBlock(x, y, z, y > RIVER_PILLAR_TOP - 3 ? Blocks.dirt : deepslate, 0, 2);
         }
         for (int y = RIVER_PILLAR_TOP; y <= PUZZLE_FLOOR_TOP; y++) {

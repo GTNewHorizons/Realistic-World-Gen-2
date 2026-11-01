@@ -41,7 +41,6 @@ public class ConfigRWG {
     public static int landmassOffsetX = 0;
     public static int landmassOffsetZ = 0;
     public static float biomeSizeMultiplier = 1f;
-    public static float taintedBiomeCancellationChance = 0.5f;
     public static int biomeOffsetX = 0;
     public static int biomeOffsetZ = 0;
     public static boolean enableWorldgenDiagnostics = false;
@@ -188,16 +187,6 @@ public class ConfigRWG {
                     10f,
                     "Scales biome extent by this factor, conceptually similar to vanilla Large Biomes. "
                             + worldgenWarning);
-            taintedBiomeCancellationChance = config.getFloat(
-                    "Tainted Biome Cancellation Chance",
-                    CONTINENTAL_CATEGORY,
-                    0.5f,
-                    0f,
-                    1f,
-                    "Chance along each horizontal dimension to cancel a Tainted Land candidate. The retained biome "
-                            + "density is (1 - chance)^2, so 0.5 produces one quarter as many tainted biomes and 1.0 "
-                            + "disables them. 0.0 retains spacing of roughly 1000 blocks in typical worlds. "
-                            + worldgenWarning);
             config.setCategoryPropertyOrder(
                     CONTINENTAL_CATEGORY,
                     Arrays.asList(
@@ -211,8 +200,7 @@ public class ConfigRWG {
                             "Island Placement Chance",
                             "Large Island Volcano Chance",
                             "Average Landmarks Per Type And Continent",
-                            "Biome Size Multiplier",
-                            "Tainted Biome Cancellation Chance"));
+                            "Biome Size Multiplier"));
             String expertCategory = "Expert / Worldgen Migration";
             config.setCategoryComment(
                     expertCategory,

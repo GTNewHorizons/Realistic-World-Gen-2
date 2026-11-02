@@ -3,6 +3,7 @@ package rwg2.world;
 import java.io.File;
 
 import rwg2.config.ConfigRWG;
+import rwg2.config.ContinentalConfig;
 import rwg2.util.ContinentalNoise;
 
 /** Headless sampling utility for calibrating the approximate maximum-ocean setting. */
@@ -21,7 +22,7 @@ public final class OceanCoverageCalibration {
         System.out.println("RWG ocean calibration config: " + config.getAbsolutePath());
         for (String text : targets.split(",")) {
             float target = Float.parseFloat(text.trim());
-            ConfigRWG.maximumOceanFraction = target;
+            ContinentalConfig.maximumOceanFraction = target;
             ContinentalNoise noise = new ContinentalNoise(SEED);
             long ocean = 0L;
             long total = 0L;

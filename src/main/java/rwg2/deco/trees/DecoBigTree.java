@@ -33,8 +33,9 @@ public class DecoBigTree extends WorldGenerator {
         type = typeinput;
     }
 
+    /** Picks a size between 7 and 13 from the seeded tree RNG when generating. */
     public DecoBigTree() {
-        this(7 + ((int) Math.floor(Math.random() * 7)), 0);
+        this(0, 0);
     }
 
     void generateLeafNodeList() {
@@ -408,7 +409,7 @@ public class DecoBigTree extends WorldGenerator {
         this.basePos[2] = par5;
 
         if (this.heightLimit == 0) {
-            this.heightLimit = size;
+            this.heightLimit = size > 0 ? size : 7 + this.rand.nextInt(7);
         }
 
         if (type != 10 && !this.validTreeLocation()) {

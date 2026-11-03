@@ -2,294 +2,81 @@ package rwg2.config;
 
 import java.io.File;
 import java.lang.reflect.Field;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 import net.minecraftforge.common.config.Configuration;
 
-import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import com.gtnewhorizon.gtnhlib.config.Config;
+import com.gtnewhorizon.gtnhlib.config.ConfigException;
+import com.gtnewhorizon.gtnhlib.config.ConfigFieldParser;
+import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
+
 import cpw.mods.fml.relauncher.FMLInjectionData;
 
-public class ConfigRWG {
+/** Registers RWG's GTNHLib config classes, which all share {@code config/rwg2.cfg}. */
+public final class ConfigRWG {
 
-    private static final String CONTINENTAL_CATEGORY = "Continental RWG";
-    private static final String LANDMARK_DECORATION_CATEGORY = "Landmark Decorations";
-    public static final String DEBUG_CATEGORY = "Debug";
+    public static final String MOD_ID = "rwg2";
+    public static final String DEBUG_CATEGORY = "debug";
     public static final String ENABLE_WORLDGEN_DIAGNOSTICS = "Enable Worldgen Diagnostics";
-    private static final int[] DEFAULT_BIOME_IDS = { 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312,
-            313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329 };
+    static final String WORLDGEN_WARNING = "Changing this after creating a world causes borders between old and new chunks.";
+    static final String OFFSET_WARNING = "Expert migration setting. Change only before generating new chunks. Positive "
+            + "values sample the generator at larger coordinates, moving the corresponding map features toward "
+            + "negative coordinates.";
 
-    public static Configuration config;
-    public static int[] biomeIDs = new int[30];
+    private static final Class<?>[] CONFIG_CLASSES = { BiomeIdConfig.class, SettingsConfig.class,
+            ContinentalConfig.class, LandmarkDecorationsConfig.class, MigrationConfig.class, DebugConfig.class };
 
-    public static boolean generateEmeralds = true;
-    public static boolean enableCobblestoneBoulders = true;
-    public static boolean generateCaves = true;
-    public static boolean generateMineshafts = true;
-    public static boolean generateVillages = true;
-    public static boolean generateUndergroundLakes = true;
-    public static boolean generateUndergroundLavaLakes = true;
-    public static boolean enableFlightSpeedCommand = true;
-    public static float minimumContinentWidth = 2700f;
-    public static float maximumContinentWidth = 2700f;
-    public static float averageOceanWidth = 100f;
-    public static float minimumOceanWidth = 50f;
-    public static float maximumOceanFraction = 0.4f;
-    public static float minimumIslandWidth = 300f;
-    public static float maximumIslandWidth = 600f;
-    public static float islandPlacementChance = 0.30f;
-    public static float largeIslandVolcanoChance = 0.15f;
-    public static float averageLandmarksPerTypeAndContinent = 0.25f;
-    public static float twilightForestPortalChance = 0.25f;
-    public static float twilightForestPortalUnlitChance = 0.5f;
-    public static int twilightForestPortalMinimumSpawnDistance = 3500;
-    public static int landmassOffsetX = 0;
-    public static int landmassOffsetZ = 0;
-    public static float biomeSizeMultiplier = 1f;
-    public static int biomeOffsetX = 0;
-    public static int biomeOffsetZ = 0;
-    public static boolean enableWorldgenDiagnostics = false;
+    private ConfigRWG() {}
 
-    public static void init(FMLPreInitializationEvent event) {
-        init(event.getSuggestedConfigurationFile());
+    /** Registers every config class with GTNHLib, which also exposes them in the in-game mod config screen. */
+    public static void init() {
+        try {
+            for (Class<?> configClass : CONFIG_CLASSES) {
+                ConfigurationManager.registerConfig(configClass);
+            }
+        } catch (ConfigException exception) {
+            throw new RuntimeException("Failed to load RWG config", exception);
+        }
+        Configuration config = ConfigurationManager.getConfig(ContinentalConfig.class);
+        applyPropertyOrder(config);
+        config.save();
     }
 
+    /** Loads the config classes from an arbitrary file for the offline preview, which runs outside Forge. */
     public static void init(File file) {
         ensureForgeConfigEnvironment(file);
-        config = new Configuration(file);
-        for (int c = 0; c < biomeIDs.length; c++) {
-            biomeIDs[c] = DEFAULT_BIOME_IDS[c];
-        }
-
+        Configuration config = new Configuration(file);
+        config.load();
         try {
-            config.load();
-            biomeIDs[0] = config.get("biome ids", "00 Ice River", DEFAULT_BIOME_IDS[0], "Ice River").getInt();
-            biomeIDs[1] = config.get("biome ids", "01 Cold River", DEFAULT_BIOME_IDS[1], "Cold River").getInt();
-            biomeIDs[2] = config.get("biome ids", "02 Temperate River", DEFAULT_BIOME_IDS[2], "Temperate River")
-                    .getInt();
-            biomeIDs[3] = config.get("biome ids", "03 Hot River", DEFAULT_BIOME_IDS[3], "Hot River").getInt();
-            biomeIDs[4] = config.get("biome ids", "04 Wet River", DEFAULT_BIOME_IDS[4], "Wet River").getInt();
-            biomeIDs[5] = config.get("biome ids", "05 River Oasis", DEFAULT_BIOME_IDS[5], "River Oasis").getInt();
-            biomeIDs[6] = config.get("biome ids", "06 Ice Ocean", DEFAULT_BIOME_IDS[6], "Ice Ocean").getInt();
-            biomeIDs[7] = config.get("biome ids", "07 Cold Ocean", DEFAULT_BIOME_IDS[7], "Cold Ocean").getInt();
-            biomeIDs[8] = config.get("biome ids", "08 Temperate Ocean", DEFAULT_BIOME_IDS[8], "Temperate Ocean")
-                    .getInt();
-            biomeIDs[9] = config.get("biome ids", "09 Hot Ocean", DEFAULT_BIOME_IDS[9], "Hot Ocean").getInt();
-            biomeIDs[10] = config.get("biome ids", "10 Wet Ocean", DEFAULT_BIOME_IDS[10], "Wet Ocean").getInt();
-            biomeIDs[11] = config.get("biome ids", "11 Ocean Oasis", DEFAULT_BIOME_IDS[11], "Ocean Oasis").getInt();
-            biomeIDs[12] = config.get("biome ids", "12 Snow Desert", DEFAULT_BIOME_IDS[12], "Snow Desert").getInt();
-            biomeIDs[13] = config.get("biome ids", "13 Snow Forest", DEFAULT_BIOME_IDS[13], "Snow Forest").getInt();
-            biomeIDs[14] = config.get("biome ids", "14 Cold Plains", DEFAULT_BIOME_IDS[14], "Cold Plains").getInt();
-            biomeIDs[15] = config.get("biome ids", "15 Cold Forest", DEFAULT_BIOME_IDS[15], "Cold Forest").getInt();
-            biomeIDs[16] = config.get("biome ids", "16 Hot Plains", DEFAULT_BIOME_IDS[16], "Hot Plains").getInt();
-            biomeIDs[17] = config.get("biome ids", "17 Hot Forest", DEFAULT_BIOME_IDS[17], "Hot Forest").getInt();
-            biomeIDs[18] = config.get("biome ids", "18 Hot Desert", DEFAULT_BIOME_IDS[18], "Hot Desert").getInt();
-            biomeIDs[19] = config.get("biome ids", "19 Plains (RWG)", DEFAULT_BIOME_IDS[19], "Plains").getInt();
-            biomeIDs[20] = config.get("biome ids", "20 Tropical Island", DEFAULT_BIOME_IDS[20], "Tropical Island")
-                    .getInt();
-            biomeIDs[21] = config.get("biome ids", "21 Redwood", DEFAULT_BIOME_IDS[21], "Redwood").getInt();
-            biomeIDs[22] = config.get("biome ids", "22 Jungle (RWG)", DEFAULT_BIOME_IDS[22], "Jungle").getInt();
-            biomeIDs[23] = config.get("biome ids", "23 Oasis", DEFAULT_BIOME_IDS[23], "Oasis").getInt();
-            biomeIDs[24] = config.get("biome ids", "24 Temperate Forest", DEFAULT_BIOME_IDS[24], "Temperate Forest")
-                    .getInt();
-            biomeIDs[25] = config.get("biome ids", "25 Jungle Mesa", DEFAULT_BIOME_IDS[25], "Jungle Mesa").getInt();
-            biomeIDs[26] = config.get("biome ids", "26 High Rainforest", DEFAULT_BIOME_IDS[26], "High Rainforest")
-                    .getInt();
-            biomeIDs[27] = config.get("biome ids", "27 Jungle Hills", DEFAULT_BIOME_IDS[27], "Jungle Hills").getInt();
-            biomeIDs[28] = config.get("biome ids", "28 Jungle Canyon", DEFAULT_BIOME_IDS[28], "Jungle Canyon").getInt();
-            biomeIDs[29] = config.get("biome ids", "29 Redwood Jungle", DEFAULT_BIOME_IDS[29], "Redwood Jungle")
-                    .getInt();
-
-            generateEmeralds = config.getBoolean("Generate Emeralds", "Settings", true, "");
-            enableCobblestoneBoulders = config.getBoolean("Enable Cobblestone Boulders", "Settings", true, "");
-            generateCaves = config.getBoolean("Generate Caves", "Settings", true, "");
-            generateMineshafts = config.getBoolean("Generate Mineshafts", "Settings", true, "");
-            generateVillages = config.getBoolean("Generate Villages", "Settings", true, "");
-            generateUndergroundLakes = config.getBoolean("Generate Underground Lakes", "Settings", true, "");
-            generateUndergroundLavaLakes = config.getBoolean("Generate Underground Lava Lakes", "Settings", true, "");
-            enableFlightSpeedCommand = config.getBoolean(
-                    "Enable Flight Speed Command",
-                    "Settings",
-                    true,
-                    "Registers RWG2's /speed command. Disable this when another mod, such as Essentials, provides it.");
-            String worldgenWarning = "Changing this after creating a world causes borders between old and new chunks.";
-            String continentWidthDescription = "Distance in blocks from a continent's Voronoi centre to its coast. "
-                    + worldgenWarning;
-            minimumContinentWidth = config.getFloat(
-                    "Minimum Continent Width",
-                    CONTINENTAL_CATEGORY,
-                    2700f,
-                    1f,
-                    100000f,
-                    continentWidthDescription);
-            maximumContinentWidth = config.getFloat(
-                    "Maximum Continent Width",
-                    CONTINENTAL_CATEGORY,
-                    2700f,
-                    1f,
-                    100000f,
-                    continentWidthDescription);
-            averageOceanWidth = config.getFloat(
-                    "Average Ocean Width",
-                    CONTINENTAL_CATEGORY,
-                    100f,
-                    1f,
-                    100000f,
-                    "Average ocean band width in blocks; continent plus ocean width sets the Voronoi radius. "
-                            + worldgenWarning);
-            minimumOceanWidth = config.getFloat(
-                    "Minimum Ocean Width",
-                    CONTINENTAL_CATEGORY,
-                    50f,
-                    0f,
-                    100000f,
-                    "Minimum total water gap in blocks between two maximum-sized continents. " + worldgenWarning);
-            maximumOceanFraction = config.getFloat(
-                    "Maximum Ocean Fraction",
-                    CONTINENTAL_CATEGORY,
-                    0.4f,
-                    0f,
-                    1f,
-                    "Approximate upper limit on the fraction of the world covered by ocean. 1.0 disables the limit. "
-                            + "Lower values dilate "
-                            + "continents after placement, so oceans that normally separate continents may become "
-                            + "interior seas. The result is approximate and varies with the world seed and the other "
-                            + "continent settings. "
-                            + worldgenWarning);
-            String islandWidthDescription = "Distance in blocks from an island seed to its coast. " + worldgenWarning;
-            minimumIslandWidth = config
-                    .getFloat("Minimum Island Width", CONTINENTAL_CATEGORY, 300f, 1f, 100000f, islandWidthDescription);
-            maximumIslandWidth = config
-                    .getFloat("Maximum Island Width", CONTINENTAL_CATEGORY, 600f, 1f, 100000f, islandWidthDescription);
-            islandPlacementChance = config.getFloat(
-                    "Island Placement Chance",
-                    CONTINENTAL_CATEGORY,
-                    0.30f,
-                    0f,
-                    1f,
-                    "Chance to retain an island after valid island seeds have been identified. " + worldgenWarning);
-            largeIslandVolcanoChance = config.getFloat(
-                    "Large Island Volcano Chance",
-                    CONTINENTAL_CATEGORY,
-                    0.15f,
-                    0f,
-                    1f,
-                    "Chance for a large island to contain a volcano. " + worldgenWarning);
-            averageLandmarksPerTypeAndContinent = config.getFloat(
-                    "Average Landmarks Per Type And Continent",
-                    CONTINENTAL_CATEGORY,
-                    0.25f,
-                    0f,
-                    100f,
-                    "Approximate average number of each enabled landmark type per continent. Candidate probability "
-                            + "is corrected for the configured continental land fraction. "
-                            + worldgenWarning);
-            biomeSizeMultiplier = config.getFloat(
-                    "Biome Size Multiplier",
-                    CONTINENTAL_CATEGORY,
-                    1f,
-                    0.25f,
-                    10f,
-                    "Scales biome extent by this factor, conceptually similar to vanilla Large Biomes. "
-                            + worldgenWarning);
-            config.setCategoryComment(
-                    LANDMARK_DECORATION_CATEGORY,
-                    "Centerpieces placed on top of RWG's landmark pillars. These only apply to chunks generated "
-                            + "after the change.");
-            twilightForestPortalChance = config.getFloat(
-                    "Twilight Forest Portal Chance",
-                    LANDMARK_DECORATION_CATEGORY,
-                    0.25f,
-                    0f,
-                    1f,
-                    "Chance for an eligible river junction landmark to carry a ready-made Twilight Forest portal "
-                            + "instead of a LootGames puzzle. 0 disables these portals entirely. Requires "
-                            + "Twilight Forest.");
-            twilightForestPortalUnlitChance = config.getFloat(
-                    "Twilight Forest Portal Unlit Chance",
-                    LANDMARK_DECORATION_CATEGORY,
-                    0.5f,
-                    0f,
-                    1f,
-                    "Chance for one of those portals to generate as a plain water pool that a player still has to "
-                            + "light with Twilight Forest's activation item. 1 leaves every pool unlit.");
-            twilightForestPortalMinimumSpawnDistance = config.getInt(
-                    "Twilight Forest Portal Minimum Spawn Distance",
-                    LANDMARK_DECORATION_CATEGORY,
-                    2000,
-                    0,
-                    30000000,
-                    "Twilight Forest portals are not placed within this many blocks of x=0, z=0, so a shared seed "
-                            + "cannot point players at a portal next to spawn. Junctions inside the radius fall back "
-                            + "to a LootGames puzzle.");
-            config.setCategoryPropertyOrder(
-                    CONTINENTAL_CATEGORY,
-                    Arrays.asList(
-                            "Minimum Continent Width",
-                            "Maximum Continent Width",
-                            "Average Ocean Width",
-                            "Minimum Ocean Width",
-                            "Maximum Ocean Fraction",
-                            "Minimum Island Width",
-                            "Maximum Island Width",
-                            "Island Placement Chance",
-                            "Large Island Volcano Chance",
-                            "Average Landmarks Per Type And Continent",
-                            "Biome Size Multiplier"));
-            String expertCategory = "Expert / Worldgen Migration";
-            config.setCategoryComment(
-                    expertCategory,
-                    "EXPERT ONLY! With the same seed, coordinates, and biome, RWG produces the same terrain shape. "
-                            + "New world-generation versions can move continents and biomes, so these offsets let you "
-                            + "place an existing base inside the appropriate biome and on land again. After aligning the "
-                            + "new map with runPreview, Server Utilities can restore claimed chunks from backup into the "
-                            + "surrounding terrain more seamlessly. Finalize these values before generating new chunks.");
-            String offsetWarning = "Expert migration setting. Change only before generating new chunks. Positive values "
-                    + "sample the generator at larger coordinates, moving the corresponding map features toward negative "
-                    + "coordinates.";
-            landmassOffsetX = config.getInt(
-                    "Landmass Placement Offset X",
-                    expertCategory,
-                    0,
-                    -30000000,
-                    30000000,
-                    "Offsets continent and island placement without moving biome terrain noise. " + offsetWarning);
-            landmassOffsetZ = config.getInt(
-                    "Landmass Placement Offset Z",
-                    expertCategory,
-                    0,
-                    -30000000,
-                    30000000,
-                    "Offsets continent and island placement without moving biome terrain noise. " + offsetWarning);
-            biomeOffsetX = config.getInt(
-                    "Biome Placement Offset X",
-                    expertCategory,
-                    0,
-                    -30000000,
-                    30000000,
-                    "Offsets climate and biome selection without moving the selected biome's terrain noise. "
-                            + offsetWarning);
-            biomeOffsetZ = config.getInt(
-                    "Biome Placement Offset Z",
-                    expertCategory,
-                    0,
-                    -30000000,
-                    30000000,
-                    "Offsets climate and biome selection without moving the selected biome's terrain noise. "
-                            + offsetWarning);
-            enableWorldgenDiagnostics = config.getBoolean(
-                    ENABLE_WORLDGEN_DIAGNOSTICS,
-                    DEBUG_CATEGORY,
-                    false,
-                    "Logs cross-chunk tree and village generation. Adds hooks to World.setBlock. Requires a restart.");
-        } catch (Exception e) {
-            for (int c = 0; c < biomeIDs.length; c++) {
-                biomeIDs[c] = DEFAULT_BIOME_IDS[c];
+            for (Class<?> configClass : CONFIG_CLASSES) {
+                String category = configClass.getAnnotation(Config.class).category();
+                Config.Comment comment = configClass.getAnnotation(Config.Comment.class);
+                if (comment != null) config.setCategoryComment(category, String.join("\n", comment.value()));
+                for (Field field : configClass.getDeclaredFields()) {
+                    if (!isConfigField(field)) continue;
+                    ConfigFieldParser.loadField(null, field, config, category, ConfigFieldParser.getFieldName(field));
+                }
             }
-        } finally {
-            if (config.hasChanged()) {
-                config.save();
-            }
+        } catch (ConfigException exception) {
+            throw new IllegalStateException("Failed to load RWG preview config " + file, exception);
         }
+        applyPropertyOrder(config);
+        if (config.hasChanged()) config.save();
+    }
+
+    /** Keeps continental settings in declaration order instead of Forge's alphabetical order. */
+    private static void applyPropertyOrder(Configuration config) {
+        List<String> order = new ArrayList<String>();
+        for (Field field : ContinentalConfig.class.getDeclaredFields()) {
+            if (isConfigField(field)) order.add(ConfigFieldParser.getFieldName(field));
+        }
+        config.setCategoryPropertyOrder(ContinentalConfig.class.getAnnotation(Config.class).category(), order);
+    }
+
+    private static boolean isConfigField(Field field) {
+        return !field.isSynthetic() && !field.isAnnotationPresent(Config.Ignore.class);
     }
 
     private static void ensureForgeConfigEnvironment(File configFile) {

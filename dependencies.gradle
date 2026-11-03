@@ -2,6 +2,7 @@
 
 dependencies {
     runtimeOnlyNonPublishable rfg.deobf("curse.maven:journeymap-32274:4500658")
+    implementation("com.github.GTNewHorizons:GTNHLib:0.11.54:dev")
     implementation("com.github.GTNewHorizons:NotEnoughItems:2.8.171-GTNH:dev")
 
     devOnlyNonPublishable rfg.deobf('curse.maven:biomes-o-plenty-220318:2499612')

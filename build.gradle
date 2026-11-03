@@ -84,8 +84,10 @@ def asyncProfilerDirectory = layout.buildDirectory.dir(
 def downloadAsyncProfiler = tasks.register('downloadAsyncProfiler', DownloadProfilerArchive) {
     group = 'verification'
     description = 'Downloads the async-profiler native distribution archive'
-    if (asyncProfilerPlatform == null) {
-        throw new GradleException('async-profiler provides official builds for Linux and macOS; use WSL on Windows.')
+    doFirst {
+        if (asyncProfilerPlatform == null) {
+            throw new GradleException('async-profiler provides official builds for Linux and macOS; use WSL on Windows.')
+        }
     }
     sourceUrl = "https://github.com/async-profiler/async-profiler/releases/download/v${asyncProfilerVersion}/async-profiler-${asyncProfilerVersion}-${asyncProfilerPlatform}.${asyncProfilerExtension}"
     destination = asyncProfilerArchive

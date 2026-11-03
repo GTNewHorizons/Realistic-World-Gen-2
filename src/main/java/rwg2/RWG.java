@@ -18,6 +18,7 @@ import rwg2.commands.RwgBugInfoCommand;
 import rwg2.commands.RwgNoiseCommand;
 import rwg2.commands.SpeedCommand;
 import rwg2.config.ConfigRWG;
+import rwg2.config.SettingsConfig;
 import rwg2.data.RailcraftWorldgenFilter;
 import rwg2.data.VillageMaterials;
 import rwg2.handlers.LoginHandler;
@@ -29,7 +30,7 @@ import rwg2.world.WorldTypeRealistic;
         modid = "rwg2",
         name = "RealisticWorldGen",
         version = Tags.VERSION,
-        dependencies = "required-after:endlessids",
+        dependencies = "required-after:endlessids;required-after:gtnhlib",
         acceptableRemoteVersions = "*")
 public class RWG {
 
@@ -43,7 +44,7 @@ public class RWG {
     public void preInit(FMLPreInitializationEvent event) {
         instance = this;
 
-        ConfigRWG.init(event);
+        ConfigRWG.init();
         BaseBiomes.load();
         NetworkHandler.init();
 
@@ -71,7 +72,7 @@ public class RWG {
 
         manager.registerCommand(new RwgNoiseCommand());
         manager.registerCommand(new RwgBugInfoCommand());
-        if (ConfigRWG.enableFlightSpeedCommand) {
+        if (SettingsConfig.enableFlightSpeedCommand) {
             manager.registerCommand(new SpeedCommand());
         }
     }

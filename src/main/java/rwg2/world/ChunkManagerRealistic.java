@@ -19,7 +19,8 @@ import gnu.trove.map.hash.TLongObjectHashMap;
 import rwg2.biomes.realistic.RealisticBiomeBase;
 import rwg2.biomes.realistic.ocean.RealisticBiomeIslandVolcano;
 import rwg2.biomes.realistic.ocean.RealisticBiomeOcean;
-import rwg2.config.ConfigRWG;
+import rwg2.config.ContinentalConfig;
+import rwg2.config.MigrationConfig;
 import rwg2.map.LavaCaveLandmark;
 import rwg2.support.Support;
 import rwg2.support.Support.BiomePlacement;
@@ -126,7 +127,11 @@ public class ChunkManagerRealistic extends WorldChunkManager {
     }
 
     public ChunkManagerRealistic(long seed, boolean continental) {
-        this(seed, continental, 1400f * ConfigRWG.biomeSizeMultiplier, 500f * ConfigRWG.biomeSizeMultiplier);
+        this(
+                seed,
+                continental,
+                1400f * ContinentalConfig.biomeSizeMultiplier,
+                500f * ContinentalConfig.biomeSizeMultiplier);
     }
 
     public ChunkManagerRealistic(long seed, boolean continental, float climateWidth, float biomeWidth) {
@@ -426,8 +431,8 @@ public class ChunkManagerRealistic extends WorldChunkManager {
         if (!continental) return Long.MIN_VALUE;
         long center = continents.getLavaCaveCenterCoordinates(landmassX(x), landmassZ(z));
         if (center == Long.MIN_VALUE || !canGenerateLavaCaveAt(x, z)) return Long.MIN_VALUE;
-        int centerX = (int) (center >> 32) - ConfigRWG.landmassOffsetX;
-        int centerZ = (int) center - ConfigRWG.landmassOffsetZ;
+        int centerX = (int) (center >> 32) - MigrationConfig.landmassOffsetX;
+        int centerZ = (int) center - MigrationConfig.landmassOffsetZ;
         return (long) centerX << 32 | centerZ & 0xffffffffL;
     }
 
@@ -439,8 +444,8 @@ public class ChunkManagerRealistic extends WorldChunkManager {
         if (lavaCaveEligibilityMap.containsKey(key)) return lavaCaveEligibilityMap.get(key) == 1;
 
         long center = continents.getLavaCaveCenterCoordinates(shiftedX, shiftedZ);
-        int centerX = (int) (center >> 32) - ConfigRWG.landmassOffsetX;
-        int centerZ = (int) center - ConfigRWG.landmassOffsetZ;
+        int centerX = (int) (center >> 32) - MigrationConfig.landmassOffsetX;
+        int centerZ = (int) center - MigrationConfig.landmassOffsetZ;
         boolean eligible = getNoiseAt(centerX, centerZ) > 63f;
         if (lavaCaveEligibilityMap.size() > 256) lavaCaveEligibilityMap.clear();
         lavaCaveEligibilityMap.put(key, (byte) (eligible ? 1 : 2));
@@ -456,8 +461,8 @@ public class ChunkManagerRealistic extends WorldChunkManager {
         if (volcanoEligibilityMap.containsKey(key)) return volcanoEligibilityMap.get(key) == 1;
 
         long centerCoordinates = continents.getVolcanoCenterCoordinates(landmassX, landmassZ);
-        int centerX = (int) (centerCoordinates >> 32) - ConfigRWG.landmassOffsetX;
-        int centerZ = (int) centerCoordinates - ConfigRWG.landmassOffsetZ;
+        int centerX = (int) (centerCoordinates >> 32) - MigrationConfig.landmassOffsetX;
+        int centerZ = (int) centerCoordinates - MigrationConfig.landmassOffsetZ;
         boolean eligible = !hasRiverNearVolcano(centerX, centerZ)
                 && ((RealisticBiomeIslandVolcano) Support.volcanoIsland)
                         .canGenerateAtHeight(getVolcanoBaseHeight(x, y));
@@ -617,8 +622,8 @@ public class ChunkManagerRealistic extends WorldChunkManager {
         if (seedCoordinates == Long.MIN_VALUE) return 63f;
         if (volcanoBaseHeightMap.containsKey(seedCoordinates)) return volcanoBaseHeightMap.get(seedCoordinates);
         long centerCoordinates = continents.getVolcanoCenterCoordinates(landmassX, landmassZ);
-        int centerX = (int) (centerCoordinates >> 32) - ConfigRWG.landmassOffsetX;
-        int centerY = (int) centerCoordinates - ConfigRWG.landmassOffsetZ;
+        int centerX = (int) (centerCoordinates >> 32) - MigrationConfig.landmassOffsetX;
+        int centerY = (int) centerCoordinates - MigrationConfig.landmassOffsetZ;
         int climate = getClimateAt(centerX, centerY);
         RealisticBiomeBase biome = continents.isIslandVolcano(landmassX, landmassZ)
                 ? selectIslandBiome(1, climate, centerX, centerY)
@@ -649,8 +654,8 @@ public class ChunkManagerRealistic extends WorldChunkManager {
         int shiftedZ = landmassZ(y);
         long centerCoordinates = continents.getVolcanoCenterCoordinates(shiftedX, shiftedZ);
         if (centerCoordinates == Long.MIN_VALUE) return null;
-        int centerX = (int) (centerCoordinates >> 32) - ConfigRWG.landmassOffsetX;
-        int centerZ = (int) centerCoordinates - ConfigRWG.landmassOffsetZ;
+        int centerX = (int) (centerCoordinates >> 32) - MigrationConfig.landmassOffsetX;
+        int centerZ = (int) centerCoordinates - MigrationConfig.landmassOffsetZ;
         int climate = getClimateAt(centerX, centerZ);
         RealisticBiomeBase biome = continents.isIslandVolcano(shiftedX, shiftedZ)
                 ? selectIslandBiome(1, climate, centerX, centerZ)
@@ -972,19 +977,19 @@ public class ChunkManagerRealistic extends WorldChunkManager {
     }
 
     private static int landmassX(int x) {
-        return x + ConfigRWG.landmassOffsetX;
+        return x + MigrationConfig.landmassOffsetX;
     }
 
     private static int landmassZ(int z) {
-        return z + ConfigRWG.landmassOffsetZ;
+        return z + MigrationConfig.landmassOffsetZ;
     }
 
     private static int biomeX(int x) {
-        return x + ConfigRWG.biomeOffsetX;
+        return x + MigrationConfig.biomeOffsetX;
     }
 
     private static int biomeZ(int z) {
-        return z + ConfigRWG.biomeOffsetZ;
+        return z + MigrationConfig.biomeOffsetZ;
     }
 
     public float[] getRainfall(float[] par1ArrayOfFloat, int par2, int par3, int par4, int par5) {

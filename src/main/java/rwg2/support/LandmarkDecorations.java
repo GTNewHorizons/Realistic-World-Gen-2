@@ -7,12 +7,9 @@ import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.feature.WorldGenerator;
 
-import cpw.mods.fml.common.Loader;
-import eu.usrv.legacylootgames.blocks.DungeonBrick;
 import ganymedes01.etfuturum.ModBlocks;
 import mods.natura.worldgen.GlowshroomGenBlueGreen;
 import mods.natura.worldgen.GlowshroomGenPurple;
-import ru.timeconqueror.lootgames.registry.LGBlocks;
 import rwg2.biomes.realistic.land.RealisticBiomeMountainChain;
 import rwg2.config.LandmarkDecorationsConfig;
 import rwg2.map.LavaCaveLandmark;
@@ -59,15 +56,15 @@ public final class LandmarkDecorations {
         this.glowshrooms = glowshrooms;
     }
 
+    /** Only call when {@link Mods#ET_FUTURUM} is set. */
     public static LandmarkDecorations create() {
-        if (!Loader.isModLoaded("etfuturum")) return null;
-        Block lootGame = Loader.isModLoaded("lootgames") ? LGBlocks.PUZZLE_MASTER : null;
+        Block lootGame = Mods.LOOTGAMES ? LootGamesCompat.puzzleMaster() : null;
         Block twilight = null;
         Block firefly = null;
         Block[] flora = { Blocks.tallgrass, Blocks.tallgrass, Blocks.tallgrass, Blocks.tallgrass, Blocks.tallgrass,
                 Blocks.tallgrass, Blocks.red_flower, Blocks.yellow_flower };
         int[] floraMetadata = { 1, 1, 1, 1, 2, 1, 0, 0 };
-        if (Loader.isModLoaded("TwilightForest")) {
+        if (Mods.TWILIGHT_FOREST) {
             twilight = TFBlocks.portal;
             firefly = TFBlocks.firefly;
             flora = new Block[] { TFBlocks.plant, TFBlocks.plant, TFBlocks.plant, TFBlocks.plant, TFBlocks.plant,
@@ -75,7 +72,7 @@ public final class LandmarkDecorations {
             floraMetadata = new int[] { BlockTFPlant.META_FORESTGRASS, BlockTFPlant.META_FORESTGRASS,
                     BlockTFPlant.META_MAYAPPLE, BlockTFPlant.META_CLOVERPATCH, BlockTFPlant.META_FIDDLEHEAD, 1, 0, 0 };
         }
-        WorldGenerator[] naturaGlowshrooms = Loader.isModLoaded("Natura")
+        WorldGenerator[] naturaGlowshrooms = Mods.NATURA
                 ? new WorldGenerator[] { new GlowshroomGenBlueGreen(false), new GlowshroomGenPurple(false) }
                 : null;
         Block deep = ModBlocks.DEEPSLATE.get();
@@ -249,7 +246,8 @@ public final class LandmarkDecorations {
     private static void placeRoundedPillar(World world, int centerX, int centerZ, int bottom, int top, int radius,
             Block block, boolean shieldTop) {
         int radiusSquared = radius * radius + radius / 2;
-        int shieldMetadata = DungeonBrick.Type.FLOOR_SHIELDED.ordinal();
+        Block shieldBlock = shieldTop ? LootGamesCompat.dungeonWall() : null;
+        int shieldMetadata = shieldTop ? LootGamesCompat.shieldedFloorMetadata() : 0;
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
                 if (dx * dx + dz * dz > radiusSquared) continue;
@@ -259,7 +257,7 @@ public final class LandmarkDecorations {
                             centerX + dx,
                             y,
                             centerZ + dz,
-                            shield ? LGBlocks.DUNGEON_WALL : block,
+                            shield ? shieldBlock : block,
                             shield ? shieldMetadata : 0,
                             2);
                 }
@@ -350,8 +348,8 @@ public final class LandmarkDecorations {
                             x,
                             RIVER_PILLAR_TOP + 1,
                             z,
-                            LGBlocks.DUNGEON_WALL,
-                            DungeonBrick.Type.WALL.ordinal(),
+                            LootGamesCompat.dungeonWall(),
+                            LootGamesCompat.wallMetadata(),
                             2);
                     continue;
                 }
@@ -390,8 +388,9 @@ public final class LandmarkDecorations {
             world.setBlock(x, y, z, y > RIVER_PILLAR_TOP - 3 ? Blocks.dirt : deepslate, 0, 2);
         }
         for (int y = RIVER_PILLAR_TOP; y <= PUZZLE_FLOOR_TOP; y++) {
-            DungeonBrick.Type type = y == PUZZLE_FLOOR_TOP ? DungeonBrick.Type.FLOOR_SHIELDED : DungeonBrick.Type.WALL;
-            world.setBlock(x, y, z, LGBlocks.DUNGEON_WALL, type.ordinal(), 2);
+            int metadata = y == PUZZLE_FLOOR_TOP ? LootGamesCompat.shieldedFloorMetadata()
+                    : LootGamesCompat.wallMetadata();
+            world.setBlock(x, y, z, LootGamesCompat.dungeonWall(), metadata, 2);
         }
     }
 

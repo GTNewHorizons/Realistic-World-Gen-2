@@ -5,45 +5,45 @@ import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.BiomeDictionary.Type;
 
 import rwg2.api.RWGBiomes;
-import rwg2.config.ConfigRWG;
+import rwg2.config.BiomeIdConfig;
 
 public class BaseBiomes {
 
-    private static final BiomeGenBase[] RWG_BIOMES = new BiomeGenBase[ConfigRWG.biomeIDs.length];
+    private static final BiomeGenBase[] RWG_BIOMES = new BiomeGenBase[30];
 
     public static void load() {
-        RWGBiomes.baseRiverIce = new BaseBiomeRiver(ConfigRWG.biomeIDs[0], 0, "Ice River");
-        RWGBiomes.baseRiverCold = new BaseBiomeRiver(ConfigRWG.biomeIDs[1], 1, "Cold River");
-        RWGBiomes.baseRiverTemperate = new BaseBiomeRiver(ConfigRWG.biomeIDs[2], 2, "Temperate River");
-        RWGBiomes.baseRiverHot = new BaseBiomeRiver(ConfigRWG.biomeIDs[3], 3, "Hot River");
-        RWGBiomes.baseRiverWet = new BaseBiomeRiver(ConfigRWG.biomeIDs[4], 4, "Wet River");
-        RWGBiomes.baseRiverOasis = new BaseBiomeRiver(ConfigRWG.biomeIDs[5], 5, "River Oasis");
+        RWGBiomes.baseRiverIce = new BaseBiomeRiver(BiomeIdConfig.iceRiver, 0, "Ice River");
+        RWGBiomes.baseRiverCold = new BaseBiomeRiver(BiomeIdConfig.coldRiver, 1, "Cold River");
+        RWGBiomes.baseRiverTemperate = new BaseBiomeRiver(BiomeIdConfig.temperateRiver, 2, "Temperate River");
+        RWGBiomes.baseRiverHot = new BaseBiomeRiver(BiomeIdConfig.hotRiver, 3, "Hot River");
+        RWGBiomes.baseRiverWet = new BaseBiomeRiver(BiomeIdConfig.wetRiver, 4, "Wet River");
+        RWGBiomes.baseRiverOasis = new BaseBiomeRiver(BiomeIdConfig.riverOasis, 5, "River Oasis");
 
-        RWGBiomes.baseOceanIce = new BaseBiomeOcean(ConfigRWG.biomeIDs[6], 0, "Ice Ocean");
-        RWGBiomes.baseOceanCold = new BaseBiomeOcean(ConfigRWG.biomeIDs[7], 1, "Cold Ocean");
-        RWGBiomes.baseOceanTemperate = new BaseBiomeOcean(ConfigRWG.biomeIDs[8], 2, "Temperate Ocean");
-        RWGBiomes.baseOceanHot = new BaseBiomeOcean(ConfigRWG.biomeIDs[9], 3, "Hot Ocean");
-        RWGBiomes.baseOceanWet = new BaseBiomeOcean(ConfigRWG.biomeIDs[10], 4, "Wet Ocean");
-        RWGBiomes.baseOceanOasis = new BaseBiomeOcean(ConfigRWG.biomeIDs[11], 5, "Ocean Oasis");
+        RWGBiomes.baseOceanIce = new BaseBiomeOcean(BiomeIdConfig.iceOcean, 0, "Ice Ocean");
+        RWGBiomes.baseOceanCold = new BaseBiomeOcean(BiomeIdConfig.coldOcean, 1, "Cold Ocean");
+        RWGBiomes.baseOceanTemperate = new BaseBiomeOcean(BiomeIdConfig.temperateOcean, 2, "Temperate Ocean");
+        RWGBiomes.baseOceanHot = new BaseBiomeOcean(BiomeIdConfig.hotOcean, 3, "Hot Ocean");
+        RWGBiomes.baseOceanWet = new BaseBiomeOcean(BiomeIdConfig.wetOcean, 4, "Wet Ocean");
+        RWGBiomes.baseOceanOasis = new BaseBiomeOcean(BiomeIdConfig.oceanOasis, 5, "Ocean Oasis");
 
-        RWGBiomes.baseSnowDesert = new BaseBiomeSnowDesert(ConfigRWG.biomeIDs[12], "Snow Desert");
-        RWGBiomes.baseSnowForest = new BaseBiomeSnowForest(ConfigRWG.biomeIDs[13], "Snow Forest");
-        RWGBiomes.baseColdPlains = new BaseBiomeColdPlains(ConfigRWG.biomeIDs[14], "Cold Plains");
-        RWGBiomes.baseColdForest = new BaseBiomeColdForest(ConfigRWG.biomeIDs[15], "Cold Forest");
-        RWGBiomes.baseHotPlains = new BaseBiomeHotPlains(ConfigRWG.biomeIDs[16], "Hot Plains");
-        RWGBiomes.baseHotForest = new BaseBiomeHotForest(ConfigRWG.biomeIDs[17], "Hot Forest");
-        RWGBiomes.baseHotDesert = new BaseBiomeHotDesert(ConfigRWG.biomeIDs[18], "Hot Desert");
-        RWGBiomes.basePlains = new BaseBiomePlains(ConfigRWG.biomeIDs[19], "Plains (RWG)");
-        RWGBiomes.baseTropicalIsland = new BaseBiomeTropicalIsland(ConfigRWG.biomeIDs[20], "Tropical Island");
-        RWGBiomes.baseRedwood = new BaseBiomeRedwood(ConfigRWG.biomeIDs[21], "Redwood");
-        RWGBiomes.baseJungle = new BaseBiomeJungle(ConfigRWG.biomeIDs[22], "Jungle (RWG)");
-        RWGBiomes.baseOasis = new BaseBiomeRiver(ConfigRWG.biomeIDs[23], 5, "Oasis");
-        RWGBiomes.baseTemperateForest = new BaseBiomeTemperateForest(ConfigRWG.biomeIDs[24], "Temperate Forest");
-        RWGBiomes.baseJungleMesa = new BaseBiomeJungleMesa(ConfigRWG.biomeIDs[25], "Jungle Mesa");
-        RWGBiomes.baseHighRainforest = new BaseBiomeJungle(ConfigRWG.biomeIDs[26], "High Rainforest");
-        RWGBiomes.baseJungleHills = new BaseBiomeJungle(ConfigRWG.biomeIDs[27], "Jungle Hills");
-        RWGBiomes.baseJungleCanyon = new BaseBiomeJungle(ConfigRWG.biomeIDs[28], "Jungle Canyon");
-        RWGBiomes.baseRedwoodJungle = new BaseBiomeJungle(ConfigRWG.biomeIDs[29], "Redwood Jungle");
+        RWGBiomes.baseSnowDesert = new BaseBiomeSnowDesert(BiomeIdConfig.snowDesert, "Snow Desert");
+        RWGBiomes.baseSnowForest = new BaseBiomeSnowForest(BiomeIdConfig.snowForest, "Snow Forest");
+        RWGBiomes.baseColdPlains = new BaseBiomeColdPlains(BiomeIdConfig.coldPlains, "Cold Plains");
+        RWGBiomes.baseColdForest = new BaseBiomeColdForest(BiomeIdConfig.coldForest, "Cold Forest");
+        RWGBiomes.baseHotPlains = new BaseBiomeHotPlains(BiomeIdConfig.hotPlains, "Hot Plains");
+        RWGBiomes.baseHotForest = new BaseBiomeHotForest(BiomeIdConfig.hotForest, "Hot Forest");
+        RWGBiomes.baseHotDesert = new BaseBiomeHotDesert(BiomeIdConfig.hotDesert, "Hot Desert");
+        RWGBiomes.basePlains = new BaseBiomePlains(BiomeIdConfig.plains, "Plains (RWG)");
+        RWGBiomes.baseTropicalIsland = new BaseBiomeTropicalIsland(BiomeIdConfig.tropicalIsland, "Tropical Island");
+        RWGBiomes.baseRedwood = new BaseBiomeRedwood(BiomeIdConfig.redwood, "Redwood");
+        RWGBiomes.baseJungle = new BaseBiomeJungle(BiomeIdConfig.jungle, "Jungle (RWG)");
+        RWGBiomes.baseOasis = new BaseBiomeRiver(BiomeIdConfig.oasis, 5, "Oasis");
+        RWGBiomes.baseTemperateForest = new BaseBiomeTemperateForest(BiomeIdConfig.temperateForest, "Temperate Forest");
+        RWGBiomes.baseJungleMesa = new BaseBiomeJungleMesa(BiomeIdConfig.jungleMesa, "Jungle Mesa");
+        RWGBiomes.baseHighRainforest = new BaseBiomeJungle(BiomeIdConfig.highRainforest, "High Rainforest");
+        RWGBiomes.baseJungleHills = new BaseBiomeJungle(BiomeIdConfig.jungleHills, "Jungle Hills");
+        RWGBiomes.baseJungleCanyon = new BaseBiomeJungle(BiomeIdConfig.jungleCanyon, "Jungle Canyon");
+        RWGBiomes.baseRedwoodJungle = new BaseBiomeJungle(BiomeIdConfig.redwoodJungle, "Redwood Jungle");
 
         System.arraycopy(
                 new BiomeGenBase[] { RWGBiomes.baseRiverIce, RWGBiomes.baseRiverCold, RWGBiomes.baseRiverTemperate,
@@ -133,7 +133,7 @@ public class BaseBiomes {
         BiomeGenBase[] registry = BiomeGenBase.getBiomeGenArray();
         for (int index = 0; index < RWG_BIOMES.length; index++) {
             BiomeGenBase expected = RWG_BIOMES[index];
-            int id = ConfigRWG.biomeIDs[index];
+            int id = expected.biomeID;
             BiomeGenBase registered = id >= 0 && id < registry.length ? registry[id] : null;
             if (registered != expected) {
                 String actualName = registered == null ? "nothing" : '"' + registered.biomeName + '"';

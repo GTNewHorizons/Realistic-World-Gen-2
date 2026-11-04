@@ -20,6 +20,8 @@ dependencies {
     api('com.github.GTNewHorizons:twilightforest:2.7.40:dev')
     api(rfg.deobf('curse.maven:witchery-69673:2234410'))
     previewImplementation('tools.profiler:async-profiler:4.5')
+    // Independently needed for the preview tool but included from GTNHLib + GTNHExtLib for ingame use
+    previewRuntimeOnly('it.unimi.dsi:fastutil:8.5.18')
 }
 
 abstract class DownloadProfilerArchive extends DefaultTask {
@@ -84,8 +86,10 @@ def asyncProfilerDirectory = layout.buildDirectory.dir(
 def downloadAsyncProfiler = tasks.register('downloadAsyncProfiler', DownloadProfilerArchive) {
     group = 'verification'
     description = 'Downloads the async-profiler native distribution archive'
-    if (asyncProfilerPlatform == null) {
-        throw new GradleException('async-profiler provides official builds for Linux and macOS; use WSL on Windows.')
+    doFirst {
+        if (asyncProfilerPlatform == null) {
+            throw new GradleException('async-profiler provides official builds for Linux and macOS; use WSL on Windows.')
+        }
     }
     sourceUrl = "https://github.com/async-profiler/async-profiler/releases/download/v${asyncProfilerVersion}/async-profiler-${asyncProfilerVersion}-${asyncProfilerPlatform}.${asyncProfilerExtension}"
     destination = asyncProfilerArchive

@@ -43,7 +43,7 @@ import rwg2.biomes.realistic.RealisticBiomeBase;
 import rwg2.biomes.realistic.land.RealisticBiomeMountainChain;
 import rwg2.biomes.realistic.ocean.RealisticBiomeIslandVolcano;
 import rwg2.biomes.realistic.ocean.RealisticBiomeOcean;
-import rwg2.config.ConfigRWG;
+import rwg2.config.SettingsConfig;
 import rwg2.deco.DecoClay;
 import rwg2.map.LavaCaveLandmark;
 import rwg2.support.EtFuturumCaveVines;
@@ -235,15 +235,15 @@ public class ChunkGeneratorRealistic implements IChunkProvider {
         }
 
         replaceBlocksForBiome(cx, cy, chunkBlocks, chunkMetadata, biomesForGeneration, baseBiomesList, testHeight);
-        if (ConfigRWG.generateCaves) {
+        if (SettingsConfig.generateCaves) {
             caves.func_151539_a(this, worldObj, cx, cy, chunkBlocks);
         }
 
-        if (ConfigRWG.generateMineshafts) {
+        if (SettingsConfig.generateMineshafts) {
             mineshaftGenerator.func_151539_a(this, this.worldObj, cx, cy, chunkBlocks);
         }
         strongholdGenerator.func_151539_a(this, this.worldObj, cx, cy, chunkBlocks);
-        if (ConfigRWG.generateVillages) {
+        if (SettingsConfig.generateVillages) {
             villageGenerator.func_151539_a(this, this.worldObj, cx, cy, chunkBlocks);
         }
         if (continental && Support.volcanoIsland instanceof RealisticBiomeIslandVolcano) {
@@ -822,17 +822,17 @@ public class ChunkGeneratorRealistic implements IChunkProvider {
 
         MinecraftForge.EVENT_BUS.post(new PopulateChunkEvent.Pre(ichunkprovider, worldObj, rand, i, j, flag));
 
-        if (ConfigRWG.generateMineshafts) {
+        if (SettingsConfig.generateMineshafts) {
             mineshaftGenerator.generateStructuresInChunk(worldObj, rand, i, j);
         }
         strongholdGenerator.generateStructuresInChunk(worldObj, rand, i, j);
-        if (ConfigRWG.generateVillages) {
+        if (SettingsConfig.generateVillages) {
             villageGenerator.generateStructuresInChunk(worldObj, rand, i, j);
         }
 
         boolean gen = false;
 
-        if (ConfigRWG.generateUndergroundLakes) {
+        if (SettingsConfig.generateUndergroundLakes) {
             gen = TerrainGen.populate(this, worldObj, rand, i, j, flag, PopulateChunkEvent.Populate.EventType.LAKE);
             if (gen && rand.nextInt(10) == 0) {
                 int i2 = x + rand.nextInt(16) + 8;
@@ -846,7 +846,7 @@ public class ChunkGeneratorRealistic implements IChunkProvider {
             }
         }
 
-        if (ConfigRWG.generateUndergroundLavaLakes) {
+        if (SettingsConfig.generateUndergroundLavaLakes) {
             gen = TerrainGen.populate(this, worldObj, rand, i, j, flag, PopulateChunkEvent.Populate.EventType.LAVA);
             if (gen && rand.nextInt(18) == 0) {
                 int j2 = x + rand.nextInt(16) + 8;
@@ -950,7 +950,7 @@ public class ChunkGeneratorRealistic implements IChunkProvider {
             }
         }
 
-        if (ConfigRWG.generateEmeralds) {
+        if (SettingsConfig.generateEmeralds) {
             for (int g12 = 0; g12 < 4; ++g12) {
                 int n1 = x + rand.nextInt(16);
                 int m1 = rand.nextInt(28) + 4;
@@ -1164,10 +1164,10 @@ public class ChunkGeneratorRealistic implements IChunkProvider {
 
     public void recreateStructures(int par1, int par2) {
         strongholdGenerator.func_151539_a(this, worldObj, par1, par2, (Block[]) null);
-        if (ConfigRWG.generateMineshafts) {
+        if (SettingsConfig.generateMineshafts) {
             mineshaftGenerator.func_151539_a(this, worldObj, par1, par2, (Block[]) null);
         }
-        if (ConfigRWG.generateVillages) {
+        if (SettingsConfig.generateVillages) {
             villageGenerator.func_151539_a(this, this.worldObj, par1, par2, (Block[]) null);
         }
     }

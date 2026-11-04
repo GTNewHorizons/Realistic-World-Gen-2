@@ -19,20 +19,16 @@ public class SupportTC {
     public static void init() {
         BiomeGenBase[] b = BiomeGenBase.getBiomeGenArray();
 
-        for (int i = 0; i < 256; i++) {
+        for (int i = 0; i < b.length; i++) {
             if (b[i] != null) {
                 if ("Tainted Land".equals(b[i].biomeName)) {
-                    Support.addBiome(
-                            new RealisticBiomeSupport(
-                                    b[i],
-                                    RWGBiomes.baseRiverTemperate,
-                                    new TerrainSmallSupport(),
-                                    new SurfaceGrassland(
-                                            b[i].topBlock,
-                                            b[i].fillerBlock,
-                                            Blocks.stone,
-                                            Blocks.cobblestone)),
-                            BiomeCategory.SMALL);
+                    RealisticBiomeSupport taintedLand = new RealisticBiomeSupport(
+                            b[i],
+                            RWGBiomes.baseRiverTemperate,
+                            new TerrainSmallSupport(),
+                            new SurfaceGrassland(b[i].topBlock, b[i].fillerBlock, Blocks.stone, Blocks.cobblestone));
+                    Support.taintedLand = taintedLand;
+                    Support.addBiome(taintedLand, BiomeCategory.SMALL);
                 }
 
                 if ("Magical Forest".equals(b[i].biomeName)) {

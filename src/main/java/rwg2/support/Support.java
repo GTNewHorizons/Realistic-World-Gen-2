@@ -7,7 +7,6 @@ import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.biome.BiomeGenBase;
 
-import cpw.mods.fml.common.Loader;
 import rwg2.api.RWGBiomes;
 import rwg2.biomes.realistic.RealisticBiomeBase;
 import rwg2.biomes.realistic.land.RealisticBiomeMountainChain;
@@ -163,18 +162,18 @@ public class Support {
         oceanDeepWet = new RealisticBiomeOcean(RWGBiomes.baseOceanWet, false, false, "RealisticBiomeOceanWetDeep");
         oceanDeep = oceanDeepCold;
 
-        if (loadModBiomes && Loader.isModLoaded("BiomesOPlenty")) {
+        if (loadModBiomes && Mods.BIOMES_O_PLENTY) {
             SupportBOP.init();
         }
 
-        if (loadModBiomes && Loader.isModLoaded("ExtrabiomesXL")) {
+        if (loadModBiomes && Mods.EXTRABIOMES_XL) {
             SupportEBXL.init();
         }
 
-        if (loadModBiomes && Loader.isModLoaded("Thaumcraft")) {
+        if (loadModBiomes && Mods.THAUMCRAFT) {
             SupportTC.init();
         }
-        if (loadModBiomes && Loader.isModLoaded("ChromatiCraft")) {
+        if (loadModBiomes && Mods.CHROMATICRAFT) {
             SupportCC.init();
         }
         rebuildExtremeBorderMountains();

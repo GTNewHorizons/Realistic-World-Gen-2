@@ -26,7 +26,8 @@ public final class ConfigRWG {
             + "negative coordinates.";
 
     private static final Class<?>[] CONFIG_CLASSES = { BiomeIdConfig.class, SettingsConfig.class,
-            ContinentalConfig.class, LandmarkDecorationsConfig.class, MigrationConfig.class, DebugConfig.class };
+            ContinentalConfig.class, ClimateBandConfig.class, LandmarkDecorationsConfig.class, MigrationConfig.class,
+            DebugConfig.class };
 
     private ConfigRWG() {}
 

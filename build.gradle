@@ -70,6 +70,16 @@ tasks.register('calibrateOceanCoverage', JavaExec) {
     systemProperties System.properties.findAll { key, value -> key.toString().startsWith('rwg2.') }
 }
 
+tasks.register('calibrateTaintedLand', JavaExec) {
+    group = 'verification'
+    description = 'Samples how much Tainted Land each placement mode produces'
+    dependsOn previewClasses
+    classpath = sourceSets.preview.runtimeClasspath
+    mainClass = 'rwg2.world.TaintedLandCalibration'
+    maxHeapSize = '2g'
+    systemProperties System.properties.findAll { key, value -> key.toString().startsWith('rwg2.') }
+}
+
 def asyncProfilerVersion = '4.5'
 def hostOs = System.getProperty('os.name').toLowerCase(Locale.ROOT)
 def hostArch = System.getProperty('os.arch').toLowerCase(Locale.ROOT)

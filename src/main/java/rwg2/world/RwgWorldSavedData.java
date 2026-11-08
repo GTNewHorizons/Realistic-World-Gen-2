@@ -11,7 +11,7 @@ import rwg2.util.NoiseImplementation;
 public class RwgWorldSavedData extends WorldSavedData {
 
     private static RwgWorldSavedData INSTANCE = null;
-    private static final String DATA_NAME = "rwg_data";
+    private static final String DATA_NAME = "rwg2_data";
     private NoiseImplementation noiseImplementation = rwg2.util.NoiseImplementation.UNKNOWN;
 
     public RwgWorldSavedData() {

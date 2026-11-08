@@ -23,6 +23,7 @@ Both share climate-based land biomes, biome size and biome offset settings, rive
 
 - Configurable continents, oceans and islands
 - Climate-based biome placement with adjustable biome size
+- Optional north-south temperature and east-west humidity climate bands
 - Rivers blended into terrain
 - Volcanoes on continents and large islands
 - Lava cave and river junction landmarks
@@ -53,10 +54,29 @@ Editable in-game through the mod config screen:
 - Feature toggles
 - Continent, ocean and island geometry
 - Landmark decorations
+- Climate bands
 - Biome and landmass placement offsets for migrating existing worlds
 - Worldgen diagnostics
 
+## Climate Bands
+
+Optional replacement for random climate placement, off by default. Enable with `Enable Climate Bands` in the `climate bands` config section. Applies to both world types. Changing these settings after creating a world causes borders between old and new chunks.
+
+From `Z = 0`, going north passes through cold then snow, and going south passes through hot. Bands mirror and repeat every snow + 2 x cold + hot blocks. Hot and wet alternate east to west within the hot band. Humidity does not affect snow or cold. `Biome Placement Offset X/Z` moves the origin.
+
+| Setting | Default (blocks) | Effect |
+| --- | --- | --- |
+| Snow Band Width | 6000 | North-south width of snow |
+| Cold Band Width | 6000 | North-south width of cold |
+| Hot Band Width | 12000 | North-south width of the band shared by hot and wet |
+| Humidity Band Width | 6000 | East-west width of each dry and wet column |
+| Blend Width | 4000 | Width of the zone where climates interleave at a boundary |
+| Boundary Warp Strength | 1500 | Small-scale waviness of boundaries |
+| Band Drift Strength | 6000 | Large-scale bending and local width variation; 0 keeps bands straight |
+| Band Drift Scale | 16000 | Distance over which drift changes; lower bends more tightly |
+
 ## Development
 
-- `./gradlew runPreview`: offline `RWG2_CONTINENTS` debug map
+- `./gradlew runPreview`: offline `RWG2_CONTINENTS` debug map; reads `run/client/config/rwg2.cfg`, or pass `--args="--config=/absolute/path/to/rwg2.cfg"`
 - `./gradlew calibrateOceanCoverage`: sample ocean coverage for current continent settings
+- `./gradlew checkClimateBands`: check climate band placement logic

@@ -1,5 +1,7 @@
 package rwg2.support;
 
+import static rwg2.support.RiverJunctionLandmark.mix;
+
 import java.util.Random;
 
 import net.minecraft.block.Block;
@@ -10,9 +12,8 @@ import net.minecraft.world.gen.feature.WorldGenerator;
 import ganymedes01.etfuturum.ModBlocks;
 import mods.natura.worldgen.GlowshroomGenBlueGreen;
 import mods.natura.worldgen.GlowshroomGenPurple;
-import rwg2.biomes.realistic.land.RealisticBiomeMountainChain;
-import rwg2.config.LandmarkDecorationsConfig;
 import rwg2.map.LavaCaveLandmark;
+import rwg2.support.RiverJunctionLandmark.Centerpiece;
 import rwg2.util.ContinentalNoise;
 import rwg2.util.NoiseGenerator;
 import rwg2.world.ChunkManagerRealistic;
@@ -131,24 +132,21 @@ public final class LandmarkDecorations {
 
     private void decorateRiverJunction(World world, ChunkManagerRealistic manager, NoiseGenerator perlin, int chunkX,
             int chunkZ) {
-        int[] center = findJunctionCenter(manager, chunkX, chunkZ);
-        if (center == null || Math.floorDiv(center[0], 16) * 16 != chunkX
-                || Math.floorDiv(center[1], 16) * 16 != chunkZ)
-            return;
+        int[] center = RiverJunctionLandmark.findCenter(manager, chunkX, chunkZ);
+        if (center == null) return;
         if (world.getBlock(center[0], 62, center[1]).getMaterial() != net.minecraft.block.material.Material.water
                 || !world.isAirBlock(center[0], 65, center[1]))
             return;
-        long key = (long) center[0] << 32 ^ center[1] & 0xffffffffL;
-        long choice = mix(world.getSeed() ^ key ^ 0x94D049BB133111EBL);
-        if ((choice & 1L) != 0L) return;
+        Centerpiece centerpiece = RiverJunctionLandmark.pickCenterpiece(world.getSeed(), center[0], center[1]);
+        if (centerpiece == Centerpiece.NONE) return;
 
-        if (allowsTwilightPortal(choice, center[0], center[1])) {
+        if (twilightPortal != null && centerpiece != Centerpiece.PUZZLE) {
             placeRiverJunctionIsland(
                     world,
                     perlin,
                     center[0],
                     center[1],
-                    leavesPortalUnlit(choice) ? Blocks.water : twilightPortal);
+                    centerpiece == Centerpiece.UNLIT_PORTAL ? Blocks.water : twilightPortal);
         } else if (puzzleMaster != null) {
             placeRiverJunctionIsland(world, perlin, center[0], center[1], null);
             world.setBlock(center[0], PUZZLE_FLOOR_TOP + 2, center[1], puzzleMaster, 0, 2);
@@ -194,55 +192,6 @@ public final class LandmarkDecorations {
         return -1;
     }
 
-    private static int[] findJunctionCenter(ChunkManagerRealistic manager, int chunkX, int chunkZ) {
-        int bestX = chunkX + 8;
-        int bestZ = chunkZ + 8;
-        float best = -1f;
-        for (int x = chunkX; x < chunkX + 16; x += 2) {
-            for (int z = chunkZ; z < chunkZ + 16; z += 2) {
-                float strength = manager.getRiverJunctionStrength(x, z);
-                if (strength > best) {
-                    best = strength;
-                    bestX = x;
-                    bestZ = z;
-                }
-            }
-        }
-        if (best < .35f) return null;
-        for (int step = 4; step >= 1; step /= 2) {
-            boolean moved;
-            do {
-                moved = false;
-                for (int dx = -step; dx <= step; dx += step) {
-                    for (int dz = -step; dz <= step; dz += step) {
-                        int x = bestX + dx;
-                        int z = bestZ + dz;
-                        float strength = manager.getRiverJunctionStrength(x, z);
-                        if (strength > best) {
-                            best = strength;
-                            bestX = x;
-                            bestZ = z;
-                            moved = true;
-                        }
-                    }
-                }
-            } while (moved);
-        }
-        if (best < .82f || !hasMountainChainNearby(manager, bestX, bestZ)
-                || manager.getLavaCaveCoordinates(bestX, bestZ) != Long.MIN_VALUE)
-            return null;
-        return new int[] { bestX, bestZ };
-    }
-
-    private static boolean hasMountainChainNearby(ChunkManagerRealistic manager, int x, int z) {
-        for (int dx = -24; dx <= 24; dx += 12) {
-            for (int dz = -24; dz <= 24; dz += 12) {
-                if (manager.getBiomeDataAt(x + dx, z + dz) instanceof RealisticBiomeMountainChain) return true;
-            }
-        }
-        return false;
-    }
-
     private static void placeRoundedPillar(World world, int centerX, int centerZ, int bottom, int top, int radius,
             Block block, boolean shieldTop) {
         int radiusSquared = radius * radius + radius / 2;
@@ -274,18 +223,6 @@ public final class LandmarkDecorations {
                 world.setBlock(x, bottom + y, z, frame ? Blocks.obsidian : Blocks.portal, alongZ ? 2 : 1, 2);
             }
         }
-    }
-
-    private boolean allowsTwilightPortal(long choice, int centerX, int centerZ) {
-        if (twilightPortal == null || LandmarkDecorationsConfig.twilightForestPortalChance <= 0f) return false;
-        long minimumDistance = LandmarkDecorationsConfig.twilightForestPortalMinimumSpawnDistance;
-        if ((long) centerX * centerX + (long) centerZ * centerZ < minimumDistance * minimumDistance) return false;
-        return (choice >>> 1 & 0xFFFFFFL) < (long) (LandmarkDecorationsConfig.twilightForestPortalChance * 0x1000000L);
-    }
-
-    private static boolean leavesPortalUnlit(long choice) {
-        return (choice >>> 40 & 0xFFFFFFL)
-                < (long) (LandmarkDecorationsConfig.twilightForestPortalUnlitChance * 0x1000000L);
     }
 
     /**
@@ -437,11 +374,4 @@ public final class LandmarkDecorations {
                 || !isIsland(land, dx, dz + 1);
     }
 
-    private static long mix(long value) {
-        value ^= value >>> 30;
-        value *= 0xBF58476D1CE4E5B9L;
-        value ^= value >>> 27;
-        value *= 0x94D049BB133111EBL;
-        return value ^ value >>> 31;
-    }
 }

@@ -213,7 +213,10 @@ public class ChunkGeneratorRealistic implements IChunkProvider {
         int k;
 
         generateTerrain(cmr, cx, cy, chunkBlocks, chunkMetadata, biomesForGeneration);
-        carveMountainChainRivers(cx, cy, chunkBlocks, chunkMetadata);
+        carveMountainChainRivers(
+                cx,
+                cy,
+                (localX, localZ, blockY) -> { setRiverCaveBlock(chunkBlocks, chunkMetadata, localX, localZ, blockY); });
 
         for (k = 0; k < 256; k++) {
             if (mapGenBiomes[k] > 0f) {
@@ -581,7 +584,31 @@ public class ChunkGeneratorRealistic implements IChunkProvider {
         return maximum;
     }
 
-    private void carveMountainChainRivers(int chunkX, int chunkZ, Block[] blocks, byte[] metadata) {
+    private interface RiverCarver {
+
+        void carve(int localX, int localZ, int blockY);
+    }
+
+    /**
+     * World-free equivalent of the junction landmark's terrain check: water at y=62 and air at y=65 once the river
+     * caves are carved. Later generation steps are not considered.
+     */
+    boolean hasOpenJunctionWater(int worldX, int worldZ) {
+        int chunkX = Math.floorDiv(worldX, 16);
+        int chunkZ = Math.floorDiv(worldZ, 16);
+        int columnX = Math.floorMod(worldX, 16);
+        int columnZ = Math.floorMod(worldZ, 16);
+        getNewNoise(cmr, chunkX * 16, chunkZ * 16, biomesForGeneration);
+        int height = (int) testHeight[columnX * 16 + columnZ];
+        boolean[] carved = new boolean[256];
+        carveMountainChainRivers(
+                chunkX,
+                chunkZ,
+                (localX, localZ, blockY) -> { if (localX == columnX && localZ == columnZ) carved[blockY] = true; });
+        return (height < 62 || carved[62]) && (height < 65 || carved[65]);
+    }
+
+    private void carveMountainChainRivers(int chunkX, int chunkZ, RiverCarver carver) {
         for (int localZ = 0; localZ < 16; localZ++) {
             for (int localX = 0; localX < 16; localX++) {
                 int terrainIndex = localX * 16 + localZ;
@@ -617,7 +644,9 @@ public class ChunkGeneratorRealistic implements IChunkProvider {
                     caveCeiling = Math.max(caveCeiling, tunnelCeiling);
                 }
 
-                carveRiverColumn(blocks, metadata, localX, localZ, caveFloor, caveCeiling);
+                for (int blockY = Math.max(1, caveFloor); blockY <= Math.min(255, caveCeiling); blockY++) {
+                    carver.carve(localX, localZ, blockY);
+                }
 
                 if (chamberStrength > 0.70f && surface > caveCeiling) {
                     int openingBottom = Math.max(caveCeiling + 1, 63);
@@ -625,7 +654,7 @@ public class ChunkGeneratorRealistic implements IChunkProvider {
                         float heightFraction = (blockY - openingBottom) / (float) Math.max(1, surface - openingBottom);
                         float openingThreshold = 0.70f + heightFraction * 0.15f;
                         if (chamberStrength >= openingThreshold) {
-                            setRiverCaveBlock(blocks, metadata, localX, localZ, blockY);
+                            carver.carve(localX, localZ, blockY);
                         }
                     }
                 }
@@ -636,13 +665,6 @@ public class ChunkGeneratorRealistic implements IChunkProvider {
     private static float smoothstep(float value) {
         value = Math.max(0f, Math.min(1f, value));
         return value * value * (3f - 2f * value);
-    }
-
-    private static void carveRiverColumn(Block[] blocks, byte[] metadata, int localX, int localZ, int floor,
-            int ceiling) {
-        for (int blockY = Math.max(1, floor); blockY <= Math.min(255, ceiling); blockY++) {
-            setRiverCaveBlock(blocks, metadata, localX, localZ, blockY);
-        }
     }
 
     private static void setRiverCaveBlock(Block[] blocks, byte[] metadata, int localX, int localZ, int blockY) {

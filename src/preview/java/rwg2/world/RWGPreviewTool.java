@@ -1,13 +1,19 @@
 package rwg2.world;
 
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.Polygon;
 import java.awt.RenderingHints;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
@@ -17,6 +23,7 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -32,17 +39,33 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
+import javax.swing.Icon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextField;
+import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
 
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
@@ -54,7 +77,10 @@ import rwg2.biomes.realistic.RealisticBiomeBase;
 import rwg2.biomes.realistic.land.RealisticBiomeMountainChain;
 import rwg2.biomes.realistic.ocean.RealisticBiomeOcean;
 import rwg2.config.ConfigRWG;
+import rwg2.config.LandmarkDecorationsConfig;
 import rwg2.support.RealisticBiomeSupport;
+import rwg2.support.RiverJunctionLandmark;
+import rwg2.support.RiverJunctionLandmark.Centerpiece;
 import rwg2.support.Support;
 import rwg2.support.Support.BiomePlacement;
 import rwg2.support.SupportBOP;
@@ -85,6 +111,12 @@ public final class RWGPreviewTool {
     }
     /** HIGHLIGHT_COLORS resolved against realistic biome IDs; zero means the category color applies. */
     private static final int[] BIOME_HIGHLIGHTS = new int[256];
+    private static final Color PORTAL_COLOR = new Color(0xFF2BD6);
+    private static final Color PUZZLE_COLOR = new Color(0xFFD23F);
+    private static final Color OUTLINE_COLOR = new Color(0x14101C);
+    /** Just above the surface of a junction island. */
+    private static final int TELEPORT_Y = 66;
+    private static final String HELP_TEXT = "Scroll to zoom, drag to pan. Click a marker to copy its /tp command.";
 
     public static void main(String[] args) {
         boolean instrumentOnly = Arrays.asList(args).contains("--instrument");
@@ -104,7 +136,14 @@ public final class RWGPreviewTool {
                 return;
             }
         }
-        open(instrumentOnly);
+        open(instrumentOnly, screenshotFile(args));
+    }
+
+    private static File screenshotFile(String[] args) {
+        for (String argument : args) {
+            if (argument.startsWith("--screenshot=")) return new File(argument.substring("--screenshot=".length()));
+        }
+        return null;
     }
 
     private static void probe(String coordinates) {
@@ -245,7 +284,8 @@ public final class RWGPreviewTool {
         }
     }
 
-    public static void open(boolean instrumentOnly) {
+    public static void open(boolean instrumentOnly, File screenshot) {
+        if (!instrumentOnly) useSystemLookAndFeel();
         initBiomeHighlights();
         ChunkManagerRealistic categoryManager = new ChunkManagerRealistic(SEED, true);
         List<RealisticBiomeBase> configuredBiomes = categoryManager.getConfiguredBiomes();
@@ -259,11 +299,12 @@ public final class RWGPreviewTool {
         MapPanel mapPanel = instrumentOnly ? null
                 : new MapPanel(image, height, biomes, metaBiomes, placements, highlight);
         JPanel root = instrumentOnly ? null : new JPanel(new BorderLayout());
-        JLabel progress = instrumentOnly ? null : new JLabel("Generating world: 0%", JLabel.CENTER);
-        if (!instrumentOnly) createPreviewFrame(root, mapPanel, progress);
+        StatusBar status = instrumentOnly ? null : new StatusBar();
+        JFrame frame = instrumentOnly ? null : createPreviewFrame(root, mapPanel, status);
         AtomicInteger completedChunks = new AtomicInteger();
         ExecutorService workers = Executors.newFixedThreadPool(WORKERS);
         CompletableFuture<?>[] jobs = new CompletableFuture[WORKERS];
+        List<Landmark> landmarks = Collections.synchronizedList(new ArrayList<Landmark>());
 
         try {
             for (int tile = 0; tile < WORKERS; tile++) {
@@ -299,10 +340,7 @@ public final class RWGPreviewTool {
                             int completed = completedChunks.incrementAndGet();
                             if (!instrumentOnly && (completed & 1023) == 0) {
                                 SwingUtilities.invokeLater(() -> {
-                                    progress.setText(
-                                            String.format(
-                                                    "Generating world: %.1f%%",
-                                                    completed * 100d / (CHUNKS * CHUNKS)));
+                                    status.progress("Generating world", completed / (double) (CHUNKS * CHUNKS));
                                     mapPanel.repaint();
                                 });
                             }
@@ -316,7 +354,7 @@ public final class RWGPreviewTool {
                 return;
             }
             SwingUtilities.invokeLater(() -> {
-                progress.setText("Lighting preview…");
+                status.progress("Lighting preview", -1);
                 mapPanel.repaint();
             });
             for (int tile = 0; tile < WORKERS; tile++) {
@@ -334,24 +372,86 @@ public final class RWGPreviewTool {
                 }, workers);
             }
             CompletableFuture.allOf(jobs).join();
+            SwingUtilities.invokeLater(() -> {
+                status.progress("Locating river junction landmarks", -1);
+                mapPanel.repaint();
+            });
+            for (int tile = 0; tile < WORKERS; tile++) {
+                final int tx = tile % GRID, tz = tile / GRID;
+                jobs[tile] = CompletableFuture.runAsync(() -> findLandmarks(tx, tz, landmarks), workers);
+            }
+            CompletableFuture.allOf(jobs).join();
         } finally {
             workers.shutdownNow();
         }
 
-        JPanel sidebar = createSidebar(biomes, metaBiomes, placements, configuredBiomes, categoryManager, highlight);
+        Collections.sort(landmarks, (a, b) -> Double.compare(a.distance, b.distance));
+        JPanel sidebar = createSidebar(
+                biomes,
+                metaBiomes,
+                placements,
+                configuredBiomes,
+                categoryManager,
+                highlight,
+                createPortalTab(landmarks, mapPanel, status));
         SwingUtilities.invokeLater(() -> {
-            mapPanel.finishGeneration();
-            root.remove(progress);
+            mapPanel.finishGeneration(landmarks);
+            status.finish(HELP_TEXT);
             root.add(sidebar, BorderLayout.EAST);
             root.revalidate();
             mapPanel.repaint();
+            if (screenshot == null) return;
+            // Lay out now, then queue behind the resize event that refits the map.
+            frame.validate();
+            SwingUtilities.invokeLater(() -> saveScreenshot(frame, screenshot));
         });
     }
 
-    private static JFrame createPreviewFrame(JPanel root, MapPanel mapPanel, JLabel progress) {
+    private static void useSystemLookAndFeel() {
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (ReflectiveOperationException | UnsupportedLookAndFeelException exception) {
+            System.out.println("Keeping the default look and feel: " + exception);
+        }
+    }
+
+    private static void saveScreenshot(JFrame frame, File file) {
+        BufferedImage shot = new BufferedImage(frame.getWidth(), frame.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = shot.createGraphics();
+        frame.paint(graphics);
+        graphics.dispose();
+        try {
+            ImageIO.write(shot, "png", file);
+        } catch (IOException exception) {
+            throw new RuntimeException("Could not write " + file, exception);
+        }
+        frame.dispose();
+    }
+
+    /** Runs the same placement decisions as world generation over one tile of the map. */
+    private static void findLandmarks(int tileX, int tileZ, List<Landmark> landmarks) {
+        ChunkManagerRealistic manager = new ChunkManagerRealistic(SEED, true);
+        ChunkGeneratorRealistic generator = new ChunkGeneratorRealistic(manager, SEED, true);
+        for (int cz = tileZ * CHUNKS / GRID; cz < (tileZ + 1) * CHUNKS / GRID; cz++) {
+            for (int cx = tileX * CHUNKS / GRID; cx < (tileX + 1) * CHUNKS / GRID; cx++) {
+                int chunkX = cx * 16 - SIZE / 2;
+                int chunkZ = cz * 16 - SIZE / 2;
+                // A center strong enough to host a landmark keeps nonzero strength across its whole chunk.
+                if (manager.getRiverJunctionStrength(chunkX + 8, chunkZ + 8) <= 0f) continue;
+                int[] center = RiverJunctionLandmark.findCenter(manager, chunkX, chunkZ);
+                if (center == null) continue;
+                Centerpiece kind = RiverJunctionLandmark.pickCenterpiece(SEED, center[0], center[1]);
+                if (kind == Centerpiece.NONE || !generator.hasOpenJunctionWater(center[0], center[1])) continue;
+                landmarks.add(new Landmark(center[0], center[1], kind));
+            }
+        }
+    }
+
+    private static JFrame createPreviewFrame(JPanel root, MapPanel mapPanel, StatusBar status) {
         JFrame frame = new JFrame("RWG2_CONTINENTS — seed " + SEED);
+        root.add(createToolbar(mapPanel, status), BorderLayout.NORTH);
         root.add(mapPanel);
-        root.add(progress, BorderLayout.SOUTH);
+        root.add(status, BorderLayout.SOUTH);
         frame.add(root);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.setSize(1400, 900);
@@ -371,6 +471,166 @@ public final class RWGPreviewTool {
         return frame;
     }
 
+    private static JComponent createToolbar(MapPanel map, StatusBar status) {
+        JToolBar toolbar = new JToolBar();
+        toolbar.setFloatable(false);
+        toolbar.add(layerToggle(map, "TF portals", KeyEvent.VK_P, map.showPortals, value -> map.showPortals = value));
+        toolbar.add(legendLabel("lit", Centerpiece.LIT_PORTAL));
+        toolbar.add(legendLabel("unlit", Centerpiece.UNLIT_PORTAL));
+        toolbar.addSeparator();
+        toolbar.add(layerToggle(map, "Puzzles", KeyEvent.VK_U, map.showPuzzles, value -> map.showPuzzles = value));
+        toolbar.add(legendLabel(null, Centerpiece.PUZZLE));
+        toolbar.addSeparator();
+        toolbar.add(layerToggle(map, "Spawn radius", KeyEvent.VK_S, map.showSpawn, value -> map.showSpawn = value));
+        toolbar.add(layerToggle(map, "Biome hover", KeyEvent.VK_B, map.showHatch, value -> map.showHatch = value));
+        toolbar.addSeparator();
+        JButton fit = new JButton("Fit view");
+        fit.setMnemonic(KeyEvent.VK_F);
+        fit.addActionListener(event -> map.fit());
+        toolbar.add(fit);
+        toolbar.addSeparator();
+        toolbar.add(new JLabel("Go to X, Z: "));
+        JTextField target = new JTextField(14);
+        target.setMaximumSize(target.getPreferredSize());
+        Pattern coordinates = Pattern.compile("^\\s*(-?\\d+)[\\s,]+(-?\\d+)\\s*$");
+        target.addActionListener(event -> {
+            Matcher matcher = coordinates.matcher(target.getText());
+            if (matcher.matches()) map.goTo(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)));
+            else status.flash("Enter coordinates as X, Z");
+        });
+        toolbar.add(target);
+        return toolbar;
+    }
+
+    private static JCheckBox layerToggle(MapPanel map, String text, int mnemonic, boolean selected,
+            Consumer<Boolean> setter) {
+        JCheckBox toggle = new JCheckBox(text, selected);
+        toggle.setMnemonic(mnemonic);
+        toggle.addActionListener(event -> {
+            setter.accept(toggle.isSelected());
+            map.repaint();
+        });
+        return toggle;
+    }
+
+    private static JLabel legendLabel(String text, Centerpiece kind) {
+        JLabel label = new JLabel(text, markerIcon(kind), JLabel.LEFT);
+        label.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 6));
+        return label;
+    }
+
+    private static Icon markerIcon(Centerpiece kind) {
+        return new Icon() {
+
+            @Override
+            public void paintIcon(Component component, Graphics graphics, int x, int y) {
+                Graphics2D g = (Graphics2D) graphics.create();
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                paintMarker(g, kind, x + 8, y + 8);
+                g.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 16;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 16;
+            }
+        };
+    }
+
+    private static void paintMarker(Graphics2D g, Centerpiece kind, int x, int y) {
+        if (kind == Centerpiece.PUZZLE) {
+            g.setStroke(new BasicStroke(1f));
+            g.setColor(PUZZLE_COLOR);
+            g.fillOval(x - 3, y - 3, 7, 7);
+            g.setColor(OUTLINE_COLOR);
+            g.drawOval(x - 3, y - 3, 7, 7);
+            return;
+        }
+        boolean lit = kind == Centerpiece.LIT_PORTAL;
+        Polygon diamond = new Polygon(new int[] { x, x + 7, x, x - 7 }, new int[] { y - 7, y, y + 7, y }, 4);
+        g.setColor(lit ? PORTAL_COLOR : Color.WHITE);
+        g.fill(diamond);
+        g.setStroke(new BasicStroke(lit ? 1.5f : 2f));
+        g.setColor(lit ? OUTLINE_COLOR : PORTAL_COLOR);
+        g.draw(diamond);
+    }
+
+    private static String landmarkName(Centerpiece kind) {
+        if (kind == Centerpiece.LIT_PORTAL) return "TF portal (lit)";
+        if (kind == Centerpiece.UNLIT_PORTAL) return "TF portal (unlit pool)";
+        return "LootGames puzzle";
+    }
+
+    private static JComponent createPortalTab(List<Landmark> landmarks, MapPanel map, StatusBar status) {
+        DefaultListModel<Landmark> model = new DefaultListModel<Landmark>();
+        int lit = 0, unlit = 0;
+        for (Landmark landmark : landmarks) {
+            if (landmark.kind == Centerpiece.PUZZLE) continue;
+            if (landmark.kind == Centerpiece.LIT_PORTAL) lit++;
+            else unlit++;
+            model.addElement(landmark);
+        }
+        System.out.printf(
+                "RWG preview landmarks: %d lit portals, %d unlit pools, %d puzzles%n",
+                lit,
+                unlit,
+                landmarks.size() - lit - unlit);
+        JList<Landmark> list = new JList<Landmark>(model);
+        list.setCellRenderer(new DefaultListCellRenderer() {
+
+            @Override
+            public Component getListCellRendererComponent(JList<?> owner, Object value, int index, boolean selected,
+                    boolean focused) {
+                Landmark landmark = (Landmark) value;
+                JLabel label = (JLabel) super.getListCellRendererComponent(owner, value, index, selected, focused);
+                label.setIcon(markerIcon(landmark.kind));
+                label.setText(
+                        String.format(
+                                "%,d from spawn  ·  X %d  Z %d",
+                                Math.round(landmark.distance),
+                                landmark.x,
+                                landmark.z));
+                return label;
+            }
+        });
+        list.addListSelectionListener(event -> {
+            Landmark value = list.getSelectedValue();
+            if (!event.getValueIsAdjusting() && value != null && value != map.selectedLandmark) {
+                map.select(value);
+                map.center(value.x, value.z);
+            }
+        });
+        map.selectionListener = landmark -> {
+            if (landmark.kind == Centerpiece.PUZZLE) list.clearSelection();
+            else list.setSelectedValue(landmark, true);
+            String command = "/tp " + landmark.x + " " + TELEPORT_Y + " " + landmark.z;
+            try {
+                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(command), null);
+                status.flash("Copied " + command);
+            } catch (IllegalStateException exception) {
+                status.flash(command);
+            }
+        };
+        JLabel summary = new JLabel(
+                String.format(
+                        "<html>%d portals: %d lit, %d unlit pools.<br>Spawn exclusion radius: %,d blocks.</html>",
+                        lit + unlit,
+                        lit,
+                        unlit,
+                        LandmarkDecorationsConfig.twilightForestPortalMinimumSpawnDistance));
+        summary.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        JPanel tab = new JPanel(new BorderLayout());
+        tab.add(summary, BorderLayout.NORTH);
+        tab.add(new JScrollPane(list));
+        tab.setName(String.format("TF portals (%d)", lit + unlit));
+        return tab;
+    }
+
     private static void stopAsyncProfiler() {
         try {
             String output = System.getProperty("rwg2.asyncProfilerOutput");
@@ -383,7 +643,8 @@ public final class RWGPreviewTool {
     }
 
     private static JPanel createSidebar(byte[] biomes, byte[] metaBiomes, byte[] placements,
-            List<RealisticBiomeBase> configuredBiomes, ChunkManagerRealistic manager, HighlightState highlight) {
+            List<RealisticBiomeBase> configuredBiomes, ChunkManagerRealistic manager, HighlightState highlight,
+            JComponent portalTab) {
         int[][][] counts = new int[5][BiomePlacement.values().length][256];
         int[] metaCounts = new int[5];
         for (int index = 0; index < biomes.length; index++) {
@@ -472,9 +733,12 @@ public final class RWGPreviewTool {
                     highlight);
         }
 
-        JScrollPane content = new JScrollPane(entries);
+        JScrollPane biomeTab = new JScrollPane(entries);
+        highlight.attachSidebar(biomeTab);
+        JTabbedPane content = new JTabbedPane();
         content.setPreferredSize(new Dimension(420, 1));
-        highlight.attachSidebar(content);
+        content.addTab("Biomes", biomeTab);
+        content.addTab(portalTab.getName(), portalTab);
         JPanel sidebar = new JPanel(new BorderLayout());
         JButton toggle = new JButton("▶");
         toggle.addActionListener(event -> {
@@ -668,6 +932,61 @@ public final class RWGPreviewTool {
         return Math.max(min, Math.min(max, value));
     }
 
+    private static final class Landmark {
+
+        private final int x;
+        private final int z;
+        private final Centerpiece kind;
+        private final double distance;
+
+        private Landmark(int x, int z, Centerpiece kind) {
+            this.x = x;
+            this.z = z;
+            this.kind = kind;
+            distance = Math.sqrt((double) x * x + (double) z * z);
+        }
+    }
+
+    private static final class StatusBar extends JPanel {
+
+        private final JLabel message = new JLabel(" ");
+        private final JProgressBar bar = new JProgressBar(0, 1000);
+        private final Timer revert = new Timer(4000, event -> showDefault());
+        private String defaultText = " ";
+
+        private StatusBar() {
+            super(new BorderLayout(12, 0));
+            setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+            bar.setPreferredSize(new Dimension(260, 14));
+            revert.setRepeats(false);
+            add(message);
+            add(bar, BorderLayout.EAST);
+            progress("Generating world", 0);
+        }
+
+        /** A negative fraction shows an indeterminate bar. */
+        private void progress(String text, double fraction) {
+            message.setText(text + (fraction < 0 ? "…" : String.format(": %.1f%%", fraction * 100)));
+            bar.setIndeterminate(fraction < 0);
+            if (fraction >= 0) bar.setValue((int) (fraction * 1000));
+        }
+
+        private void finish(String text) {
+            defaultText = text;
+            bar.setVisible(false);
+            showDefault();
+        }
+
+        private void flash(String text) {
+            message.setText(text);
+            revert.restart();
+        }
+
+        private void showDefault() {
+            message.setText(defaultText);
+        }
+    }
+
     private static final class HighlightState {
 
         private MapPanel map;
@@ -715,6 +1034,11 @@ public final class RWGPreviewTool {
         private final byte[] biomes;
         private final byte[] metaBiomes;
         private final byte[] placements;
+        private static final double MIN_ZOOM = .05;
+        private static final double MAX_ZOOM = 64;
+        private static final double FOCUS_ZOOM = 2;
+        private static final int HOVER_RADIUS = 10;
+
         private final HighlightState highlight;
         private final BufferedImage hatch = new BufferedImage(RESOLUTION, RESOLUTION, BufferedImage.TYPE_INT_ARGB);
         private final int[] hatchPixels = ((DataBufferInt) hatch.getRaster().getDataBuffer()).getData();
@@ -728,6 +1052,17 @@ public final class RWGPreviewTool {
         private int highlightedMeta = -1;
         private int highlightedPlacement = -1;
         private boolean generationFinished;
+        private boolean showPortals = true;
+        private boolean showPuzzles;
+        private boolean showSpawn = true;
+        private boolean showHatch = true;
+        private boolean viewAdjusted;
+        private List<Landmark> landmarks = Collections.emptyList();
+        private Landmark hoveredLandmark;
+        private Landmark selectedLandmark;
+        private Consumer<Landmark> selectionListener;
+        private Point pressPoint;
+        private int[] goToTarget;
 
         private MapPanel(BufferedImage image, float[] height, byte[] biomes, byte[] metaBiomes, byte[] placements,
                 HighlightState highlight) {
@@ -742,12 +1077,20 @@ public final class RWGPreviewTool {
 
                 @Override
                 public void mousePressed(MouseEvent event) {
-                    if (SwingUtilities.isLeftMouseButton(event)) drag = event.getPoint();
+                    if (SwingUtilities.isLeftMouseButton(event)) {
+                        drag = event.getPoint();
+                        pressPoint = drag;
+                    }
                 }
 
                 @Override
                 public void mouseReleased(MouseEvent event) {
                     drag = null;
+                    if (pressPoint != null && pressPoint.distance(event.getPoint()) < 4) {
+                        Landmark clicked = landmarkAt(event.getX(), event.getY());
+                        if (clicked != null) select(clicked);
+                    }
+                    pressPoint = null;
                 }
 
                 @Override
@@ -756,6 +1099,7 @@ public final class RWGPreviewTool {
                     x += event.getX() - drag.x;
                     y += event.getY() - drag.y;
                     drag = event.getPoint();
+                    viewAdjusted = true;
                     repaint();
                 }
 
@@ -769,19 +1113,26 @@ public final class RWGPreviewTool {
                         int index = hoverZ * RESOLUTION + hoverX;
                         highlight.set(biomes[index] & 255, metaBiomes[index] & 255, placements[index] & 255, true);
                     }
+                    hoveredLandmark = landmarkAt(event.getX(), event.getY());
+                    setCursor(
+                            Cursor.getPredefinedCursor(
+                                    hoveredLandmark == null ? Cursor.DEFAULT_CURSOR : Cursor.HAND_CURSOR));
                     repaint();
                 }
 
                 @Override
                 public void mouseExited(MouseEvent event) {
                     hoverX = -1;
+                    hoveredLandmark = null;
                     highlight.clear();
                     repaint();
                 }
 
                 @Override
                 public void mouseWheelMoved(MouseWheelEvent event) {
-                    double factor = Math.pow(1.15, -event.getPreciseWheelRotation());
+                    double target = zoom * Math.pow(1.15, -event.getPreciseWheelRotation());
+                    double factor = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, target)) / zoom;
+                    viewAdjusted = true;
                     x = event.getX() - (event.getX() - x) * factor;
                     y = event.getY() - (event.getY() - y) * factor;
                     zoom *= factor;
@@ -795,7 +1146,7 @@ public final class RWGPreviewTool {
 
                 @Override
                 public void componentResized(ComponentEvent event) {
-                    zoom = 0;
+                    if (!viewAdjusted) zoom = 0;
                     repaint();
                 }
             });
@@ -820,8 +1171,62 @@ public final class RWGPreviewTool {
             repaint();
         }
 
-        private void finishGeneration() {
+        private void finishGeneration(List<Landmark> landmarks) {
+            this.landmarks = landmarks;
             generationFinished = true;
+        }
+
+        private void fit() {
+            viewAdjusted = false;
+            zoom = 0;
+            goToTarget = null;
+            repaint();
+        }
+
+        private void goTo(int worldX, int worldZ) {
+            goToTarget = new int[] { worldX, worldZ };
+            center(worldX, worldZ);
+        }
+
+        private void center(int worldX, int worldZ) {
+            if (zoom == 0) return;
+            zoom = Math.max(zoom, FOCUS_ZOOM);
+            viewAdjusted = true;
+            x = getWidth() / 2d - (worldX + SIZE / 2) / (double) BLOCKS_PER_PIXEL * zoom;
+            y = getHeight() / 2d - (worldZ + SIZE / 2) / (double) BLOCKS_PER_PIXEL * zoom;
+            repaint();
+        }
+
+        private void select(Landmark landmark) {
+            selectedLandmark = landmark;
+            if (selectionListener != null) selectionListener.accept(landmark);
+            repaint();
+        }
+
+        private double screenX(int worldX) {
+            return x + (worldX + SIZE / 2) / (double) BLOCKS_PER_PIXEL * zoom;
+        }
+
+        private double screenY(int worldZ) {
+            return y + (worldZ + SIZE / 2) / (double) BLOCKS_PER_PIXEL * zoom;
+        }
+
+        private boolean isShown(Landmark landmark) {
+            return landmark.kind == Centerpiece.PUZZLE ? showPuzzles : showPortals;
+        }
+
+        private Landmark landmarkAt(int mouseX, int mouseY) {
+            Landmark nearest = null;
+            double nearestDistance = HOVER_RADIUS;
+            for (Landmark landmark : landmarks) {
+                if (!isShown(landmark)) continue;
+                double distance = Math.hypot(screenX(landmark.x) - mouseX, screenY(landmark.z) - mouseY);
+                if (distance < nearestDistance) {
+                    nearest = landmark;
+                    nearestDistance = distance;
+                }
+            }
+            return nearest;
         }
 
         @Override
@@ -837,11 +1242,86 @@ public final class RWGPreviewTool {
             map.translate(x, y);
             map.scale(zoom, zoom);
             map.drawImage(image, 0, 0, null);
-            if (generationFinished && (highlightedBiome >= 0 || highlightedMeta >= 0 || highlightedPlacement >= 0)) {
+            if (generationFinished && showHatch
+                    && (highlightedBiome >= 0 || highlightedMeta >= 0 || highlightedPlacement >= 0)) {
                 map.drawImage(hatch, 0, 0, null);
             }
             map.dispose();
+            paintOverlays((Graphics2D) graphics);
             paintTooltip((Graphics2D) graphics);
+        }
+
+        private void paintOverlays(Graphics2D graphics) {
+            Graphics2D g = (Graphics2D) graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            if (showSpawn) paintSpawn(g);
+            // Puzzles first, so portals are never hidden underneath them.
+            for (int pass = 0; pass < 2; pass++) {
+                for (Landmark landmark : landmarks) {
+                    if (!isShown(landmark) || (landmark.kind == Centerpiece.PUZZLE) != (pass == 0)) continue;
+                    paintMarker(g, landmark.kind, (int) screenX(landmark.x), (int) screenY(landmark.z));
+                }
+            }
+            if (selectedLandmark != null && isShown(selectedLandmark)) {
+                paintRing(g, (int) screenX(selectedLandmark.x), (int) screenY(selectedLandmark.z), Color.WHITE);
+            }
+            if (goToTarget != null) {
+                paintRing(g, (int) screenX(goToTarget[0]), (int) screenY(goToTarget[1]), Color.YELLOW);
+            }
+            paintScaleBar(g);
+            g.dispose();
+        }
+
+        private void paintSpawn(Graphics2D g) {
+            int spawnX = (int) screenX(0);
+            int spawnZ = (int) screenY(0);
+            g.setStroke(new BasicStroke(2f));
+            g.setColor(Color.BLACK);
+            g.drawLine(spawnX - 6, spawnZ, spawnX + 6, spawnZ);
+            g.drawLine(spawnX, spawnZ - 6, spawnX, spawnZ + 6);
+            int minimum = LandmarkDecorationsConfig.twilightForestPortalMinimumSpawnDistance;
+            if (minimum <= 0) return;
+            int radius = (int) (minimum / (double) BLOCKS_PER_PIXEL * zoom);
+            g.setStroke(
+                    new BasicStroke(
+                            1.5f,
+                            BasicStroke.CAP_BUTT,
+                            BasicStroke.JOIN_MITER,
+                            10f,
+                            new float[] { 6f, 5f },
+                            0f));
+            g.setColor(new Color(0, 0, 0, 200));
+            g.drawOval(spawnX - radius, spawnZ - radius, radius * 2, radius * 2);
+        }
+
+        private void paintRing(Graphics2D g, int centerX, int centerZ, Color color) {
+            g.setStroke(new BasicStroke(3.5f));
+            g.setColor(OUTLINE_COLOR);
+            g.drawOval(centerX - 12, centerZ - 12, 24, 24);
+            g.setStroke(new BasicStroke(2f));
+            g.setColor(color);
+            g.drawOval(centerX - 12, centerZ - 12, 24, 24);
+        }
+
+        private void paintScaleBar(Graphics2D g) {
+            double blocksPerScreenPixel = BLOCKS_PER_PIXEL / zoom;
+            double magnitude = Math.pow(10, Math.floor(Math.log10(blocksPerScreenPixel * 120)));
+            int blocks = (int) magnitude;
+            for (int step : new int[] { 2, 5 }) {
+                if (magnitude * step / blocksPerScreenPixel <= 180) blocks = (int) (magnitude * step);
+            }
+            int width = (int) (blocks / blocksPerScreenPixel);
+            String label = String.format("%,d blocks", blocks);
+            int boxWidth = Math.max(width, g.getFontMetrics().stringWidth(label));
+            int barX = 14, barY = getHeight() - 16;
+            g.setColor(new Color(0, 0, 0, 170));
+            g.fillRoundRect(barX - 6, barY - 22, boxWidth + 12, 30, 8, 8);
+            g.setColor(Color.WHITE);
+            g.setStroke(new BasicStroke(2f));
+            g.drawLine(barX, barY, barX + width, barY);
+            g.drawLine(barX, barY - 4, barX, barY);
+            g.drawLine(barX + width, barY - 4, barX + width, barY);
+            g.drawString(label, barX, barY - 8);
         }
 
         private void paintTooltip(Graphics2D graphics) {
@@ -850,7 +1330,16 @@ public final class RWGPreviewTool {
             int id = biomes[i] & 255;
             int meta = metaBiomes[i] & 255;
             int placement = placements[i] & 255;
-            String[] lines = {
+            List<String> lines = new ArrayList<String>();
+            if (hoveredLandmark != null && isShown(hoveredLandmark)) {
+                lines.add(
+                        String.format(
+                                "%s - %,d from spawn",
+                                landmarkName(hoveredLandmark.kind),
+                                Math.round(hoveredLandmark.distance)));
+            }
+            Collections.addAll(
+                    lines,
                     "X " + (hoverX * BLOCKS_PER_PIXEL - SIZE / 2)
                             + "  Y "
                             + Math.round(height[i])
@@ -858,16 +1347,19 @@ public final class RWGPreviewTool {
                             + (hoverZ * BLOCKS_PER_PIXEL - SIZE / 2),
                     "Category: " + placementName(BiomePlacement.values()[placement]) + " " + categoryName(meta),
                     "Biome: " + biomeName(RealisticBiomeBase.getBiome(id)),
-                    "Backing biome: " + RealisticBiomeBase.getBiome(id).baseBiome.biomeName };
+                    "Backing biome: " + RealisticBiomeBase.getBiome(id).baseBiome.biomeName);
             FontMetrics metrics = graphics.getFontMetrics();
             int width = 0;
             for (String line : lines) width = Math.max(width, metrics.stringWidth(line));
-            int boxX = getWidth() - width - 24, boxY = getHeight() - metrics.getHeight() * lines.length - 18;
+            int boxX = getWidth() - width - 24, boxY = getHeight() - metrics.getHeight() * lines.size() - 18;
             graphics.setColor(new Color(0, 0, 0, 190));
-            graphics.fillRoundRect(boxX, boxY, width + 16, metrics.getHeight() * lines.length + 10, 10, 10);
+            graphics.fillRoundRect(boxX, boxY, width + 16, metrics.getHeight() * lines.size() + 10, 10, 10);
             graphics.setColor(Color.WHITE);
-            for (int line = 0; line < lines.length; line++) {
-                graphics.drawString(lines[line], boxX + 8, boxY + 5 + metrics.getAscent() + line * metrics.getHeight());
+            for (int line = 0; line < lines.size(); line++) {
+                graphics.drawString(
+                        lines.get(line),
+                        boxX + 8,
+                        boxY + 5 + metrics.getAscent() + line * metrics.getHeight());
             }
         }
     }

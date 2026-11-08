@@ -77,6 +77,6 @@ From `Z = 0`, going north passes through cold then snow, and going south passes 
 
 ## Development
 
-- `./gradlew runPreview`: offline `RWG2_CONTINENTS` debug map; reads `run/client/config/rwg2.cfg`, or pass `--args="--config=/absolute/path/to/rwg2.cfg"`
+- `./gradlew runPreview`: offline `RWG2_CONTINENTS` debug map with Twilight Forest portal and puzzle layers; reads `run/client/config/rwg2.cfg`, or pass `--args="--config=/absolute/path/to/rwg2.cfg"`. `--screenshot=/absolute/path/to/map.png` saves the finished window and exits
 - `./gradlew calibrateOceanCoverage`: sample ocean coverage for current continent settings
 - `./gradlew checkClimateBands`: check climate band placement logic

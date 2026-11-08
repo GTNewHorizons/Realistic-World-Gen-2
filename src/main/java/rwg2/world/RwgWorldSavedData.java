@@ -90,9 +90,9 @@ public class RwgWorldSavedData extends WorldSavedData {
     }
 
     private static void migrateLegacyDataFile(World world) {
-        String worldName = CommonUtils.getWorldName(world);
-        Path fileData = Paths.get(worldName, "data", RwgWorldSavedData.DATA_NAME + ".dat");
-        Path fileDataLegacy = Paths.get(worldName, "data", RwgWorldSavedData.DATA_NAME_LEGACY + ".dat");
+        String worldSave = CommonUtils.getSaveLocation(world).getPath();
+        Path fileData = Paths.get(worldSave, "data", RwgWorldSavedData.DATA_NAME + ".dat");
+        Path fileDataLegacy = Paths.get(worldSave, "data", RwgWorldSavedData.DATA_NAME_LEGACY + ".dat");
         if (Files.notExists(fileData) && Files.exists(fileDataLegacy)) {
             try {
                 Files.copy(fileDataLegacy, fileData);

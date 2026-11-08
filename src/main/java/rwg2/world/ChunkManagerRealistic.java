@@ -19,12 +19,14 @@ import gnu.trove.map.hash.TLongObjectHashMap;
 import rwg2.biomes.realistic.RealisticBiomeBase;
 import rwg2.biomes.realistic.ocean.RealisticBiomeIslandVolcano;
 import rwg2.biomes.realistic.ocean.RealisticBiomeOcean;
+import rwg2.config.ClimateBandConfig;
 import rwg2.config.ContinentalConfig;
 import rwg2.config.MigrationConfig;
 import rwg2.map.LavaCaveLandmark;
 import rwg2.support.Support;
 import rwg2.support.Support.BiomePlacement;
 import rwg2.util.CellNoise;
+import rwg2.util.ClimateBands;
 import rwg2.util.ContinentalNoise;
 import rwg2.util.NoiseGenerator;
 import rwg2.util.NoiseSelector;
@@ -85,6 +87,11 @@ public class ChunkManagerRealistic extends WorldChunkManager {
     };
     private float climateWidth = 1400f;
     private float biomeWidth = 500f;
+    private float climateWarpStrength;
+    private ClimateBands climateBands;
+    private float climateBandBlend;
+    private float climateBandDriftStrength;
+    private float climateBandDriftScale = 1f;
     private boolean continental;
     private boolean perContinentTaintedLand;
     private ContinentalNoise continents;
@@ -144,6 +151,18 @@ public class ChunkManagerRealistic extends WorldChunkManager {
         this.continental = continental;
         this.climateWidth = climateWidth;
         this.biomeWidth = biomeWidth;
+        climateWarpStrength = climateWidth * CLIMATE_WARP_STRENGTH_MULTIPLIER;
+        if (ClimateBandConfig.enabled) {
+            climateBands = new ClimateBands(
+                    ClimateBandConfig.snowWidth,
+                    ClimateBandConfig.coldWidth,
+                    ClimateBandConfig.hotWidth,
+                    ClimateBandConfig.humidityWidth);
+            climateBandBlend = ClimateBandConfig.blendWidth * .5f;
+            climateWarpStrength = ClimateBandConfig.warpStrength;
+            climateBandDriftStrength = ClimateBandConfig.driftStrength;
+            climateBandDriftScale = ClimateBandConfig.driftScale;
+        }
 
         perlin = NoiseSelector.createNoiseGenerator(seed);
         cell = new CellNoise(seed, (short) 0);
@@ -717,7 +736,33 @@ public class ChunkManagerRealistic extends WorldChunkManager {
     }
 
     private int getClimateAt(int x, int y) {
-        return getClimateFromValue(getClimateValue(x, y));
+        if (climateBands == null) return getClimateFromValue(getClimateValue(x, y));
+        double[] warped = climateWarpSample.get();
+        warpClimateCoordinates(biomeX(x), biomeZ(y), warped);
+        float temperatureCell = biomecell.noise((warped[0] + 4000D) / climateWidth, warped[1] / climateWidth, 1D);
+        return climateBands.climateAt(getBandedHumidityX(warped), warped[1] + temperatureCell * climateBandBlend);
+    }
+
+    /** Offsets humidity position by a cell value independent of the temperature cell. */
+    private double getBandedHumidityX(double[] warped) {
+        return warped[0] + biomecell.noise((warped[0] - 9000D) / climateWidth, (warped[1] + 7000D) / climateWidth, 1D)
+                * climateBandBlend;
+    }
+
+    /**
+     * Returns the climate across a nearby band boundary or climate-cell edge, or the given climate if there is none.
+     */
+    private int getBandedNeighborClimate(double[] warped, double[] climatePoints, int climate) {
+        double x = getBandedHumidityX(warped);
+        int neighbor = climateBands.neighborClimateAt(
+                x,
+                warped[1] + climatePoints[1] * climateBandBlend,
+                CLIMATE_BORDER_DISTANCE_DIFFERENCE);
+        if (neighbor != climate
+                || (climatePoints[2] - climatePoints[0]) * climateWidth >= CLIMATE_BORDER_DISTANCE_DIFFERENCE) {
+            return neighbor;
+        }
+        return climateBands.climateAt(x, warped[1] + climatePoints[3] * climateBandBlend);
     }
 
     private int getClimateFromValue(float climate) {
@@ -734,9 +779,15 @@ public class ChunkManagerRealistic extends WorldChunkManager {
 
     private void warpClimateCoordinates(int x, int y, double[] output) {
         float scale = climateWidth * CLIMATE_WARP_SCALE_MULTIPLIER;
-        float strength = climateWidth * CLIMATE_WARP_STRENGTH_MULTIPLIER;
+        float strength = climateWarpStrength;
         output[0] = x + climateWarp.noise2(x / scale, y / scale) * strength;
         output[1] = y + climateWarp.noise2((x + 1731f) / scale, (y - 2459f) / scale) * strength;
+        if (climateBandDriftStrength > 0f) {
+            float driftX = (x - 52391f) / climateBandDriftScale;
+            float driftY = (y + 28411f) / climateBandDriftScale;
+            output[0] += climateWarp.noise2(driftX, driftY) * climateBandDriftStrength;
+            output[1] += climateWarp.noise2(driftX + 91.7f, driftY - 53.3f) * climateBandDriftStrength;
+        }
     }
 
     private RealisticBiomeBase selectBiome(List<RealisticBiomeBase> biomes, int length, int x, int y) {
@@ -792,12 +843,15 @@ public class ChunkManagerRealistic extends WorldChunkManager {
         double[] warped = climateWarpSample.get();
         warpClimateCoordinates(par1, par2, warped);
         biomecell.sampleTwo2D((warped[0] + 4000D) / climateWidth, warped[1] / climateWidth, 1D, climatePoints);
-        int neighborClimate = getClimateFromValue((float) (climatePoints[3] * .5D + .5D));
-        boolean climateBorder = neighborClimate != climate
-                && (climatePoints[2] - climatePoints[0]) * climateWidth < CLIMATE_BORDER_DISTANCE_DIFFERENCE;
+        int neighborClimate = climateBands != null ? getBandedNeighborClimate(warped, climatePoints, climate)
+                : getClimateFromValue((float) (climatePoints[3] * .5D + .5D));
+        boolean climateBorder = neighborClimate != climate && (climateBands != null
+                || (climatePoints[2] - climatePoints[0]) * climateWidth < CLIMATE_BORDER_DISTANCE_DIFFERENCE);
         if (climateBorder) {
             int borderDirection = neighborClimate < climate ? -1 : 1;
-            boolean extreme = Math.abs(neighborClimate - climate) > 1;
+            // Hot and wet share a temperature band, so cold next to wet is not extreme.
+            boolean extreme = climateBands != null ? Math.abs(Math.min(neighborClimate, 3) - Math.min(climate, 3)) > 1
+                    : Math.abs(neighborClimate - climate) > 1;
             if (extreme) {
                 ArrayList<RealisticBiomeBase> extremeDirectional = borderDirection < 0
                         ? veryColdBorderBiomes[climateIndex]

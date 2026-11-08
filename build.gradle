@@ -80,6 +80,14 @@ tasks.register('calibrateTaintedLand', JavaExec) {
     systemProperties System.properties.findAll { key, value -> key.toString().startsWith('rwg2.') }
 }
 
+tasks.register('checkClimateBands', JavaExec) {
+    group = 'verification'
+    description = 'Checks climate band placement'
+    dependsOn previewClasses
+    classpath = sourceSets.preview.runtimeClasspath
+    mainClass = 'rwg2.world.ClimateBandsCheck'
+}
+
 def asyncProfilerVersion = '4.5'
 def hostOs = System.getProperty('os.name').toLowerCase(Locale.ROOT)
 def hostArch = System.getProperty('os.arch').toLowerCase(Locale.ROOT)

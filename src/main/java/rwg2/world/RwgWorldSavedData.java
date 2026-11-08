@@ -12,8 +12,8 @@ import net.minecraft.world.WorldServer;
 import net.minecraft.world.storage.MapStorage;
 import net.minecraftforge.common.DimensionManager;
 
-import codechicken.core.CommonUtils;
 import cpw.mods.fml.common.FMLLog;
+import rwg2.util.CommonUtils;
 import rwg2.util.NoiseImplementation;
 
 public class RwgWorldSavedData extends WorldSavedData {

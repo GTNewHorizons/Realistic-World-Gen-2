@@ -211,6 +211,14 @@ public final class LavaCaveLandmark {
                     metadata[column + y] = 0;
                 }
             }
+
+            // The funnel's narrow neck leaves a ledge whose underside can still be surface sand or gravel.
+            for (int y = top + 1; y < surface; y++) {
+                if (blocks[column + y] == Blocks.air && blocks[column + y + 1] instanceof BlockFalling) {
+                    blocks[column + y + 1] = Blocks.stone;
+                    metadata[column + y + 1] = 0;
+                }
+            }
         }
     }
 

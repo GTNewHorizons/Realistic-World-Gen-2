@@ -33,8 +33,9 @@ public class DecoBigTree extends WorldGenerator {
         type = typeinput;
     }
 
+    /** Picks a size between 7 and 13 from the seeded tree RNG when generating. */
     public DecoBigTree() {
-        this(7 + ((int) Math.floor(Math.random() * 7)), 0);
+        this(0, 0);
     }
 
     void generateLeafNodeList() {
@@ -237,7 +238,7 @@ public class DecoBigTree extends WorldGenerator {
                     }
                 }
 
-                worldObj.setBlock(var14[0], var14[1], var14[2], par3, 0, 0);
+                worldObj.setBlock(var14[0], var14[1], var14[2], par3, var17, 0);
             }
         }
     }
@@ -346,8 +347,9 @@ public class DecoBigTree extends WorldGenerator {
 
             for (var15 = var3[var5] + var8; var14 != var15; var14 += var8) {
                 var13[var5] = par1ArrayOfInteger[var5] + var14;
-                var13[var6] = MathHelper.floor_double((double) par1ArrayOfInteger[var6] + (double) var14 * var9);
-                var13[var7] = MathHelper.floor_double((double) par1ArrayOfInteger[var7] + (double) var14 * var11);
+                var13[var6] = MathHelper.floor_double((double) par1ArrayOfInteger[var6] + (double) var14 * var9 + 0.5D);
+                var13[var7] = MathHelper
+                        .floor_double((double) par1ArrayOfInteger[var7] + (double) var14 * var11 + 0.5D);
                 Block var16 = this.worldObj.getBlock(var13[0], var13[1], var13[2]);
 
                 if (var16 != Blocks.air && var16 != Blocks.leaves) {
@@ -407,7 +409,7 @@ public class DecoBigTree extends WorldGenerator {
         this.basePos[2] = par5;
 
         if (this.heightLimit == 0) {
-            this.heightLimit = size;
+            this.heightLimit = size > 0 ? size : 7 + this.rand.nextInt(7);
         }
 
         if (type != 10 && !this.validTreeLocation()) {

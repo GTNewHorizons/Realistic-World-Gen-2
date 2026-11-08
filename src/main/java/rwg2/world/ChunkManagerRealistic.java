@@ -48,7 +48,11 @@ public class ChunkManagerRealistic extends WorldChunkManager {
     private static final float THREE_CLIMATE_COLD_LIMIT = .62375f;
     private static final double CLIMATE_BORDER_DISTANCE_DIFFERENCE = 288D;
     private static final float LITTORAL_WIDTH = 432f;
-    private static final double SMALL_BIOME_RADIUS = 75D;
+    /** Shared with the calibration tooling so measurements track the field actually used. */
+    static final double SMALL_BIOME_RADIUS = 75D;
+    static final double SMALL_BIOME_SPACING = 1020D;
+    static final long SMALL_BIOME_SEED_SALT = 0x510E527FADE682D1L;
+    static final long CONTINENT_SEED_SALT = 0x6A09E667F3BCC909L;
     private static final int VOLCANO_RIVER_SAMPLE_SPACING = 16;
 
     private BiomeCache biomeCache;
@@ -89,6 +93,7 @@ public class ChunkManagerRealistic extends WorldChunkManager {
     private float climateBandDriftStrength;
     private float climateBandDriftScale = 1f;
     private boolean continental;
+    private boolean perContinentTaintedLand;
     private ContinentalNoise continents;
 
     private ArrayList<RealisticBiomeBase> biomes_snow;
@@ -165,9 +170,9 @@ public class ChunkManagerRealistic extends WorldChunkManager {
         biomecell = new CellNoise(seed, (short) 0);
         climateWarp = NoiseSelector.createNoiseGenerator(seed ^ 0xBB67AE8584CAA73BL);
         // Point density is inversely proportional to spacing squared; 1020 instead of 1610 yields about 2.5x as many.
-        smallBiomePoints = new PoissonPointNoise(seed ^ 0x510E527FADE682D1L, 1020D, 4);
+        smallBiomePoints = new PoissonPointNoise(seed ^ SMALL_BIOME_SEED_SALT, SMALL_BIOME_SPACING, 4);
         if (continental) {
-            continents = new ContinentalNoise(seed ^ 0x6A09E667F3BCC909L);
+            continents = new ContinentalNoise(seed ^ CONTINENT_SEED_SALT);
         }
 
         biomes_snow = new ArrayList<RealisticBiomeBase>();
@@ -202,7 +207,15 @@ public class ChunkManagerRealistic extends WorldChunkManager {
                 Support.cold.littoral,
                 Support.hot.littoral,
                 Support.wet.littoral);
-        smallBiomes = lists(Support.snow.small, Support.cold.small, Support.hot.small, Support.wet.small);
+        perContinentTaintedLand = continental && ContinentalConfig.perContinentTaintedLand
+                && Support.taintedLand != null;
+        smallBiomes = perContinentTaintedLand
+                ? lists(
+                        without(Support.snow.small, Support.taintedLand),
+                        without(Support.cold.small, Support.taintedLand),
+                        without(Support.hot.small, Support.taintedLand),
+                        without(Support.wet.small, Support.taintedLand))
+                : lists(Support.snow.small, Support.cold.small, Support.hot.small, Support.wet.small);
         islandBiomes = lists(Support.snow.island, Support.cold.island, Support.hot.island, Support.wet.island);
         smallIslandBiomes = lists(
                 Support.snow.smallIsland,
@@ -359,7 +372,7 @@ public class ChunkManagerRealistic extends WorldChunkManager {
             setCategory(categories, veryColdBorderBiomes[index], index + 1);
             setCategory(categories, veryHotBorderBiomes[index], index + 1);
             setCategory(categories, littoralBiomes[index], index + 1);
-            setCategory(categories, smallBiomes[index], index + 1);
+            setCategory(categories, getBiomesFor(index + 1, BiomePlacement.SMALL), index + 1);
             setCategory(categories, islandBiomes[index], index + 1);
             setCategory(categories, smallIslandBiomes[index], index + 1);
             setCategory(categories, largeIslandBiomes[index], index + 1);
@@ -391,6 +404,7 @@ public class ChunkManagerRealistic extends WorldChunkManager {
     int getPlacementAt(int metaBiome, RealisticBiomeBase biome) {
         if (metaBiome <= 0 || metaBiome > 4) return BiomePlacement.CORE.ordinal();
         int index = metaBiome - 1;
+        if (perContinentTaintedLand && biome == Support.taintedLand) return BiomePlacement.SMALL.ordinal();
         if (islandBiomes[index].contains(biome)) return BiomePlacement.ISLAND.ordinal();
         if (smallIslandBiomes[index].contains(biome)) return BiomePlacement.SMALL_ISLAND.ordinal();
         if (largeIslandBiomes[index].contains(biome)) return BiomePlacement.LARGE_ISLAND.ordinal();
@@ -413,7 +427,8 @@ public class ChunkManagerRealistic extends WorldChunkManager {
         if (placement == BiomePlacement.VERY_COLD_BORDER) return veryColdBorderBiomes[index];
         if (placement == BiomePlacement.VERY_HOT_BORDER) return veryHotBorderBiomes[index];
         if (placement == BiomePlacement.LITTORAL) return littoralBiomes[index];
-        if (placement == BiomePlacement.SMALL) return smallBiomes[index];
+        if (placement == BiomePlacement.SMALL)
+            return perContinentTaintedLand ? withTaintedLand(smallBiomes[index]) : smallBiomes[index];
         if (placement == BiomePlacement.ISLAND) return islandBiomes[index];
         if (placement == BiomePlacement.SMALL_ISLAND) return smallIslandBiomes[index];
         if (placement == BiomePlacement.LARGE_ISLAND) return largeIslandBiomes[index];
@@ -811,6 +826,8 @@ public class ChunkManagerRealistic extends WorldChunkManager {
     }
 
     private RealisticBiomeBase getLandBiomeAt(int par1, int par2, int climate) {
+        if (perContinentTaintedLand && continents.isTaintedLandAt(landmassX(par1), landmassZ(par2)))
+            return Support.taintedLand;
         par1 = biomeX(par1);
         par2 = biomeZ(par2);
         int climateIndex = climate - 1;
@@ -908,6 +925,25 @@ public class ChunkManagerRealistic extends WorldChunkManager {
     @SafeVarargs
     private static ArrayList<RealisticBiomeBase>[] lists(ArrayList<RealisticBiomeBase>... lists) {
         return lists;
+    }
+
+    /** Copies the list without the excluded biome, leaving the shared Support list untouched. */
+    private static ArrayList<RealisticBiomeBase> without(ArrayList<RealisticBiomeBase> biomes,
+            RealisticBiomeBase excluded) {
+        if (!biomes.contains(excluded)) return biomes;
+        ArrayList<RealisticBiomeBase> filtered = new ArrayList<RealisticBiomeBase>(biomes);
+        filtered.remove(excluded);
+        return filtered;
+    }
+
+    /**
+     * Per-continent Tainted Land is placed ahead of the small biome field rather than drawn from it, so it is absent
+     * from the pool the preview legend is built from. List it alongside the biomes it is placed instead of.
+     */
+    private static ArrayList<RealisticBiomeBase> withTaintedLand(ArrayList<RealisticBiomeBase> biomes) {
+        ArrayList<RealisticBiomeBase> listed = new ArrayList<RealisticBiomeBase>(biomes);
+        listed.add(Support.taintedLand);
+        return listed;
     }
 
     public float getNoiseAt(int x, int y) {

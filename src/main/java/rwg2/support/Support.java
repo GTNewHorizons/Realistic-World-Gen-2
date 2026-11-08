@@ -29,6 +29,7 @@ public class Support {
     public static BiomeLists hot;
     public static BiomeLists wet;
     public static RealisticBiomeBase volcanoIsland;
+    public static RealisticBiomeBase taintedLand;
     public static BiomeGenBase lavaCaveMarkerBiome;
     public static Block lavaCaveSmolderingGrass;
     public static RealisticBiomeBase oceanShallowKelp;
@@ -139,6 +140,7 @@ public class Support {
                 BiomeCategory.COLD,
                 BiomePlacement.SMALL);
         volcanoIsland = null;
+        taintedLand = null;
         lavaCaveMarkerBiome = null;
         lavaCaveSmolderingGrass = null;
         oceanShallowSnow = new RealisticBiomeOcean(

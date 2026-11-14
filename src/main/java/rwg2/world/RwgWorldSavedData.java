@@ -1,17 +1,26 @@
 package rwg2.world;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.world.World;
 import net.minecraft.world.WorldSavedData;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.storage.MapStorage;
 import net.minecraftforge.common.DimensionManager;
 
+import cpw.mods.fml.common.FMLLog;
+import rwg2.util.CommonUtils;
 import rwg2.util.NoiseImplementation;
 
 public class RwgWorldSavedData extends WorldSavedData {
 
     private static RwgWorldSavedData INSTANCE = null;
-    private static final String DATA_NAME = "rwg_data";
+    public static final String DATA_NAME = "rwg2_data";
+    public static final String DATA_NAME_LEGACY = "rwg_data";
     private NoiseImplementation noiseImplementation = rwg2.util.NoiseImplementation.UNKNOWN;
 
     public RwgWorldSavedData() {
@@ -52,6 +61,10 @@ public class RwgWorldSavedData extends WorldSavedData {
             MapStorage storage = world.mapStorage;
             if (storage == null) return;
 
+            if (INSTANCE == null) {
+                migrateLegacyDataFile(world);
+            }
+
             INSTANCE = (RwgWorldSavedData) storage.loadData(RwgWorldSavedData.class, DATA_NAME);
             if (INSTANCE == null) {
                 INSTANCE = new RwgWorldSavedData();
@@ -74,5 +87,18 @@ public class RwgWorldSavedData extends WorldSavedData {
         }
 
         return INSTANCE.noiseImplementation;
+    }
+
+    private static void migrateLegacyDataFile(World world) {
+        String worldSave = CommonUtils.getSaveLocation(world).getPath();
+        Path fileData = Paths.get(worldSave, "data", RwgWorldSavedData.DATA_NAME + ".dat");
+        Path fileDataLegacy = Paths.get(worldSave, "data", RwgWorldSavedData.DATA_NAME_LEGACY + ".dat");
+        if (Files.notExists(fileData) && Files.exists(fileDataLegacy)) {
+            try {
+                Files.copy(fileDataLegacy, fileData);
+            } catch (IOException ex) {
+                FMLLog.warning("Could not copy \"rwg_data.dat\" to \"rwg2_data.dat\".");
+            }
+        }
     }
 }

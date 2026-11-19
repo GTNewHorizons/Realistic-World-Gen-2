@@ -13,6 +13,8 @@ public class ContinentalNoise {
     public static final double VOLCANO_ISLAND_RADIUS = 160D;
     public static final double VOLCANO_RADIUS = 130D;
     public static final double LAVA_CAVE_INFLUENCE_RADIUS = 320D;
+    /** Matches the legacy small-biome footprint so individual taint patches keep their familiar size. */
+    public static final double TAINTED_LAND_RADIUS = 75D;
     private static final int POISSON_ROUNDS = 8;
     private static final double WARP_SCALE = 3600D;
     private static final double WARP_STRENGTH = 1800D;
@@ -25,12 +27,14 @@ public class ContinentalNoise {
     private static final double OVERLAP_CORRECTION_SLOPE = .46D;
     private static final long CONTINENT_VOLCANO_SEED_SALT = 0x082EFA98EC4E6C89L;
     private static final long CONTINENT_LAVA_CAVE_SEED_SALT = 0x6A09E667F3BCC909L;
+    private static final long CONTINENT_TAINTED_LAND_SEED_SALT = 0x3C6EF372FE94F82BL;
 
     private final long seed;
     private final PoissonPointNoise points;
     private final IslandPointNoise islands;
     private final ContinentLandmarkNoise continentVolcanoes;
     private final ContinentLandmarkNoise continentLavaCaves;
+    private final ContinentLandmarkNoise continentTaintedLand;
     private final double minimumContinentWidth;
     private final double continentWidthRange;
     private final double maximumIslandWidth;
@@ -79,6 +83,13 @@ public class ContinentalNoise {
             return new double[6];
         }
     };
+    private final ThreadLocal<double[]> continentTaintedLandSamples = new ThreadLocal<double[]>() {
+
+        @Override
+        protected double[] initialValue() {
+            return new double[6];
+        }
+    };
     private final ThreadLocal<double[]> volcanoCenterSamples = new ThreadLocal<double[]>() {
 
         @Override
@@ -87,6 +98,13 @@ public class ContinentalNoise {
         }
     };
     private final ThreadLocal<double[]> lavaCaveCenterSamples = new ThreadLocal<double[]>() {
+
+        @Override
+        protected double[] initialValue() {
+            return new double[] { Double.NaN, Double.NaN, 0D, 0D };
+        }
+    };
+    private final ThreadLocal<double[]> taintedLandCenterSamples = new ThreadLocal<double[]>() {
 
         @Override
         protected double[] initialValue() {
@@ -147,6 +165,15 @@ public class ContinentalNoise {
                 voronoiRadius,
                 ContinentalConfig.averageLandmarksPerTypeAndContinent,
                 LAVA_CAVE_INFLUENCE_RADIUS);
+        continentTaintedLand = new ContinentLandmarkNoise(
+                seed,
+                seed ^ CONTINENT_TAINTED_LAND_SEED_SALT,
+                points,
+                minimumContinentWidth,
+                maximumContinentWidth,
+                voronoiRadius,
+                ContinentalConfig.averageTaintedLandPerContinent,
+                TAINTED_LAND_RADIUS);
 
         double[] origin = new double[5];
         points.sample(0D, 0D, origin);
@@ -245,6 +272,7 @@ public class ContinentalNoise {
         result.lavaCaveCenterZ = 0D;
         result.lavaCaveLocalX = 0f;
         result.lavaCaveLocalZ = 0f;
+        result.taintedLand = false;
         if (continent >= 0D && ContinentalConfig.averageLandmarksPerTypeAndContinent > 0f) {
             double[] volcano = continentVolcanoSamples.get();
             continentVolcanoes.sample(warpedX + offsetX, warpedY + offsetY, volcano);
@@ -283,6 +311,17 @@ public class ContinentalNoise {
                     result.lavaCaveLocalX = (float) localX;
                     result.lavaCaveLocalZ = (float) localZ;
                 }
+            }
+        }
+        if (continent >= 0D && ContinentalConfig.perContinentTaintedLand
+                && ContinentalConfig.averageTaintedLandPerContinent > 0f) {
+            double[] taintedLand = continentTaintedLandSamples.get();
+            continentTaintedLand.sample(warpedX + offsetX, warpedY + offsetY, taintedLand);
+            if (Double.isFinite(taintedLand[0])) {
+                double[] center = getLandmarkCenter(taintedLand[1], taintedLand[2], taintedLandCenterSamples.get());
+                double localX = x - center[2];
+                double localZ = y - center[3];
+                result.taintedLand = localX * localX + localZ * localZ <= TAINTED_LAND_RADIUS * TAINTED_LAND_RADIUS;
             }
         }
         if (continent >= maximumIslandWidth) {
@@ -399,6 +438,11 @@ public class ContinentalNoise {
         return (long) Math.round(sample.lavaCaveCenterX) << 32 | Math.round(sample.lavaCaveCenterZ) & 0xffffffffL;
     }
 
+    /** True when this coordinate lies inside one of the Tainted Land patches allotted to a continent. */
+    public boolean isTaintedLandAt(int x, int y) {
+        return sampleLandform(x, y).taintedLand;
+    }
+
     private double[] getVolcanoCenter(double seedX, double seedZ) {
         return getLandmarkCenter(seedX, seedZ, volcanoCenterSamples.get());
     }
@@ -462,5 +506,6 @@ public class ContinentalNoise {
         private double lavaCaveCenterZ;
         private float lavaCaveLocalX;
         private float lavaCaveLocalZ;
+        private boolean taintedLand;
     }
 }

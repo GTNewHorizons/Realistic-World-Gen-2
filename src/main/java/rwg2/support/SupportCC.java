@@ -17,9 +17,9 @@ public class SupportCC {
     public static void init() {
         BiomeGenBase[] b = BiomeGenBase.getBiomeGenArray();
 
-        for (int i = 0; i < 256; i++) {
+        for (int i = 0; i < b.length; i++) {
             if (b[i] != null) {
-                if (b[i].biomeName == "Ender Forest" || b[i].biomeName == "Rainbow Forest") {
+                if ("Ender Forest".equals(b[i].biomeName) || "Rainbow Forest".equals(b[i].biomeName)) {
                     Support.addBiome(
                             new RealisticBiomeSupport(
                                     b[i],
@@ -33,7 +33,7 @@ public class SupportCC {
                             BiomeCategory.HOT);
                 }
 
-                if (b[i].biomeName == "Luminous Cliffs" || b[i].biomeName == "Luminous Cliffs Shores") {
+                if ("Luminous Cliffs".equals(b[i].biomeName) || "Luminous Cliffs Shores".equals(b[i].biomeName)) {
                     Support.addBiome(
                             new RealisticBiomeSupport(
                                     b[i],

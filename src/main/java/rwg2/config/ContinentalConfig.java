@@ -89,4 +89,20 @@ public class ContinentalConfig {
     @Config.DefaultFloat(1f)
     @Config.RangeFloat(min = 0.25f, max = 10f)
     public static float biomeSizeMultiplier;
+
+    @Config.Name("Per Continent Tainted Land")
+    @Config.Comment("Seeds Tainted Land from a per-continent budget instead of the shared small-biome field, which "
+            + "scatters it across every continent. Continental worlds only. "
+            + ConfigRWG.WORLDGEN_WARNING)
+    @Config.DefaultBoolean(true)
+    public static boolean perContinentTaintedLand;
+
+    @Config.Name("Average Tainted Land Per Continent")
+    @Config.Comment("Average Tainted Land patches per continent, when the option above is enabled. 0 removes "
+            + "Tainted Land from world generation. The estimate runs high: 1.0 gives roughly 2 patches. Check the "
+            + "result with runPreview. "
+            + ConfigRWG.WORLDGEN_WARNING)
+    @Config.DefaultFloat(0.75f)
+    @Config.RangeFloat(min = 0f, max = 16f)
+    public static float averageTaintedLandPerContinent;
 }

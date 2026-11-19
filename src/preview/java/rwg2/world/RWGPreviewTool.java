@@ -22,6 +22,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -77,6 +78,13 @@ public final class RWGPreviewTool {
     private static final List<BiomeGenBase> ADDON_BIOMES = new ArrayList<BiomeGenBase>();
     private static final Map<BiomeGenBase, String> ADDON_SOURCES = new IdentityHashMap<BiomeGenBase, String>();
     private static final Map<BiomeGenBase, String> ADDON_COMMENTS = new IdentityHashMap<BiomeGenBase, String>();
+    /** Map colors that replace the climate category color for biomes too distinctive to blend in, keyed by name. */
+    private static final Map<String, Integer> HIGHLIGHT_COLORS = new HashMap<String, Integer>();
+    static {
+        HIGHLIGHT_COLORS.put("Tainted Land", 0x6243A8);
+    }
+    /** HIGHLIGHT_COLORS resolved against realistic biome IDs; zero means the category color applies. */
+    private static final int[] BIOME_HIGHLIGHTS = new int[256];
 
     public static void main(String[] args) {
         boolean instrumentOnly = Arrays.asList(args).contains("--instrument");
@@ -238,6 +246,7 @@ public final class RWGPreviewTool {
     }
 
     public static void open(boolean instrumentOnly) {
+        initBiomeHighlights();
         ChunkManagerRealistic categoryManager = new ChunkManagerRealistic(SEED, true);
         List<RealisticBiomeBase> configuredBiomes = categoryManager.getConfiguredBiomes();
         float[] height = new float[RESOLUTION * RESOLUTION];
@@ -624,8 +633,18 @@ public final class RWGPreviewTool {
         }
     }
 
+    private static void initBiomeHighlights() {
+        for (int id = 0; id < BIOME_HIGHLIGHTS.length; id++) {
+            RealisticBiomeBase biome = RealisticBiomeBase.getBiome(id);
+            if (biome == null || biome.baseBiome == null) continue;
+            Integer color = HIGHLIGHT_COLORS.get(biome.baseBiome.biomeName);
+            if (color != null) BIOME_HIGHLIGHTS[id] = color;
+        }
+    }
+
     private static int biomeColor(int id, int meta) {
-        return shade(CATEGORY_COLORS[meta], .92f + (id % 5) * .02f);
+        int highlight = BIOME_HIGHLIGHTS[id];
+        return shade(highlight == 0 ? CATEGORY_COLORS[meta] : highlight, .92f + (id % 5) * .02f);
     }
 
     private static String categoryName(int meta) {

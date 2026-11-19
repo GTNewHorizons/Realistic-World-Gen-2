@@ -14,7 +14,7 @@ import mods.natura.worldgen.GlowshroomGenBlueGreen;
 import mods.natura.worldgen.GlowshroomGenPurple;
 import ru.timeconqueror.lootgames.registry.LGBlocks;
 import rwg2.biomes.realistic.land.RealisticBiomeMountainChain;
-import rwg2.config.ConfigRWG;
+import rwg2.config.LandmarkDecorationsConfig;
 import rwg2.map.LavaCaveLandmark;
 import rwg2.util.ContinentalNoise;
 import rwg2.util.NoiseGenerator;
@@ -279,14 +279,15 @@ public final class LandmarkDecorations {
     }
 
     private boolean allowsTwilightPortal(long choice, int centerX, int centerZ) {
-        if (twilightPortal == null || ConfigRWG.twilightForestPortalChance <= 0f) return false;
-        long minimumDistance = ConfigRWG.twilightForestPortalMinimumSpawnDistance;
+        if (twilightPortal == null || LandmarkDecorationsConfig.twilightForestPortalChance <= 0f) return false;
+        long minimumDistance = LandmarkDecorationsConfig.twilightForestPortalMinimumSpawnDistance;
         if ((long) centerX * centerX + (long) centerZ * centerZ < minimumDistance * minimumDistance) return false;
-        return (choice >>> 1 & 0xFFFFFFL) < (long) (ConfigRWG.twilightForestPortalChance * 0x1000000L);
+        return (choice >>> 1 & 0xFFFFFFL) < (long) (LandmarkDecorationsConfig.twilightForestPortalChance * 0x1000000L);
     }
 
     private static boolean leavesPortalUnlit(long choice) {
-        return (choice >>> 40 & 0xFFFFFFL) < (long) (ConfigRWG.twilightForestPortalUnlitChance * 0x1000000L);
+        return (choice >>> 40 & 0xFFFFFFL)
+                < (long) (LandmarkDecorationsConfig.twilightForestPortalUnlitChance * 0x1000000L);
     }
 
     /**

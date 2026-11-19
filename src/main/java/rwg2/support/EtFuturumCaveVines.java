@@ -6,7 +6,6 @@ import net.minecraft.world.World;
 import net.minecraft.world.gen.feature.WorldGenerator;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import cpw.mods.fml.common.Loader;
 import ganymedes01.etfuturum.ModBlocks;
 import ganymedes01.etfuturum.world.generate.decorate.WorldGenCaveVines;
 import rwg2.biomes.realistic.land.RealisticBiomeMountainChain;
@@ -21,8 +20,11 @@ public final class EtFuturumCaveVines {
         this.generator = generator;
     }
 
+    /**
+     * Only call when {@link Mods#ET_FUTURUM_CAVE_VINES} is set: handing the Et Futurum generator to the constructor
+     * makes the verifier load its class as soon as this one is linked.
+     */
     public static EtFuturumCaveVines create() {
-        if (!Loader.isModLoaded("etfuturum")) return null;
         return new EtFuturumCaveVines(new WorldGenCaveVines(ModBlocks.CAVE_VINE.get()));
     }
 

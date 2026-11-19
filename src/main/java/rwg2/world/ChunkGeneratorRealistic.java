@@ -48,6 +48,7 @@ import rwg2.deco.DecoClay;
 import rwg2.map.LavaCaveLandmark;
 import rwg2.support.EtFuturumCaveVines;
 import rwg2.support.LandmarkDecorations;
+import rwg2.support.Mods;
 import rwg2.support.Support;
 import rwg2.util.CanyonColor;
 import rwg2.util.CellNoise;
@@ -151,8 +152,8 @@ public class ChunkGeneratorRealistic implements IChunkProvider {
 
         mapRand = new Random(l);
         worldSeed = l;
-        etFuturumCaveVines = mapFeatures ? EtFuturumCaveVines.create() : null;
-        landmarkDecorations = mapFeatures ? LandmarkDecorations.create() : null;
+        etFuturumCaveVines = mapFeatures && Mods.ET_FUTURUM_CAVE_VINES ? EtFuturumCaveVines.create() : null;
+        landmarkDecorations = mapFeatures && Mods.ET_FUTURUM ? LandmarkDecorations.create() : null;
 
         Map<String, String> m = new HashMap<>();
         m.put("size", "0");

@@ -12,6 +12,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeCache;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.biome.WorldChunkManager;
+import net.minecraft.world.chunk.Chunk;
 
 import gnu.trove.map.hash.TLongByteHashMap;
 import gnu.trove.map.hash.TLongFloatHashMap;
@@ -80,6 +81,8 @@ public class ChunkManagerRealistic extends WorldChunkManager {
     };
     private float climateWidth = 1400f;
     private float biomeWidth = 500f;
+    private long worldSeed;
+    private World world;
     private boolean continental;
     private ContinentalNoise continents;
 
@@ -123,6 +126,7 @@ public class ChunkManagerRealistic extends WorldChunkManager {
 
     public ChunkManagerRealistic(World par1World, boolean continental) {
         this(par1World.getSeed(), continental);
+        this.world = par1World;
     }
 
     public ChunkManagerRealistic(long seed, boolean continental) {
@@ -132,6 +136,7 @@ public class ChunkManagerRealistic extends WorldChunkManager {
     public ChunkManagerRealistic(long seed, boolean continental, float climateWidth, float biomeWidth) {
         this();
         this.continental = continental;
+        this.worldSeed = seed;
         this.climateWidth = climateWidth;
         this.biomeWidth = biomeWidth;
 
@@ -763,7 +768,12 @@ public class ChunkManagerRealistic extends WorldChunkManager {
             double[] point = smallPointSample.get();
             smallBiomePoints.sample(par1, par2, point);
             if (point[0] < SMALL_BIOME_RADIUS) {
-                return selectBiome(small, small.size(), (int) point[3], (int) point[4]);
+                int pointX = (int) point[3];
+                int pointZ = (int) point[4];
+                RealisticBiomeBase selected = selectBiome(small, small.size(), pointX, pointZ);
+                if (!isTaintedLand(selected) || isExistingTaintedSeed(selected, pointX, pointZ)
+                        || !cancelTaintedBiome(pointX, pointZ))
+                    return selected;
             }
         }
         double[] climatePoints = climatePointSample.get();
@@ -836,6 +846,34 @@ public class ChunkManagerRealistic extends WorldChunkManager {
          * hum); } else if (ocean > 0.55f) { return biomeLayerLand.getBiome(temp, hum); } else { return
          * biomeLayerCoast.getBiome(temp, hum); }
          */
+    }
+
+    private boolean cancelTaintedBiome(int pointX, int pointZ) {
+        float chance = ConfigRWG.taintedBiomeCancellationChance;
+        if (chance <= 0f) return false;
+        if (chance >= 1f) return true;
+
+        long candidate = worldSeed ^ ((long) pointX * 0x9E3779B97F4A7C15L) ^ ((long) pointZ * 0xC2B2AE3D27D4EB4FL);
+        return hashUnit(candidate ^ 0x243F6A8885A308D3L) < chance || hashUnit(candidate ^ 0x13198A2E03707344L) < chance;
+    }
+
+    private boolean isExistingTaintedSeed(RealisticBiomeBase selected, int pointX, int pointZ) {
+        if (world == null || !world.getChunkProvider().chunkExists(pointX >> 4, pointZ >> 4)) return false;
+        Chunk chunk = world.getChunkFromChunkCoords(pointX >> 4, pointZ >> 4);
+        return ChunkBiomeArrayCompat.getBiomeId(chunk, pointX, pointZ) == selected.baseBiome.biomeID;
+    }
+
+    private static boolean isTaintedLand(RealisticBiomeBase biome) {
+        return biome != null && biome.baseBiome != null && "Tainted Land".equals(biome.baseBiome.biomeName);
+    }
+
+    private static float hashUnit(long value) {
+        value ^= value >>> 33;
+        value *= 0xff51afd7ed558ccdl;
+        value ^= value >>> 33;
+        value *= 0xc4ceb9fe1a85ec53l;
+        value ^= value >>> 33;
+        return (value >>> 40) * (1f / (1 << 24));
     }
 
     private RealisticBiomeBase selectCombinedBiome(List<RealisticBiomeBase> shared,

@@ -12,38 +12,62 @@ public class BaseBiomes {
     private static final BiomeGenBase[] RWG_BIOMES = new BiomeGenBase[30];
 
     public static void load() {
-        RWGBiomes.baseRiverIce = new BaseBiomeRiver(BiomeIdConfig.iceRiver, 0, "Ice River");
-        RWGBiomes.baseRiverCold = new BaseBiomeRiver(BiomeIdConfig.coldRiver, 1, "Cold River");
-        RWGBiomes.baseRiverTemperate = new BaseBiomeRiver(BiomeIdConfig.temperateRiver, 2, "Temperate River");
-        RWGBiomes.baseRiverHot = new BaseBiomeRiver(BiomeIdConfig.hotRiver, 3, "Hot River");
-        RWGBiomes.baseRiverWet = new BaseBiomeRiver(BiomeIdConfig.wetRiver, 4, "Wet River");
-        RWGBiomes.baseRiverOasis = new BaseBiomeRiver(BiomeIdConfig.riverOasis, 5, "River Oasis");
+        RWGBiomes.baseRiverIce = withColor(new BaseBiomeRiver(BiomeIdConfig.iceRiver, 0, "Ice River"), 0xA0A0FF);
+        RWGBiomes.baseRiverCold = withColor(new BaseBiomeRiver(BiomeIdConfig.coldRiver, 1, "Cold River"), 0x4848FF);
+        RWGBiomes.baseRiverTemperate = withColor(
+                new BaseBiomeRiver(BiomeIdConfig.temperateRiver, 2, "Temperate River"),
+                0x0000FF);
+        RWGBiomes.baseRiverHot = withColor(new BaseBiomeRiver(BiomeIdConfig.hotRiver, 3, "Hot River"), 0x0000C8);
+        RWGBiomes.baseRiverWet = withColor(new BaseBiomeRiver(BiomeIdConfig.wetRiver, 4, "Wet River"), 0x0048DC);
+        RWGBiomes.baseRiverOasis = withColor(new BaseBiomeRiver(BiomeIdConfig.riverOasis, 5, "River Oasis"), 0x0088FF);
 
-        RWGBiomes.baseOceanIce = new BaseBiomeOcean(BiomeIdConfig.iceOcean, 0, "Ice Ocean");
-        RWGBiomes.baseOceanCold = new BaseBiomeOcean(BiomeIdConfig.coldOcean, 1, "Cold Ocean");
-        RWGBiomes.baseOceanTemperate = new BaseBiomeOcean(BiomeIdConfig.temperateOcean, 2, "Temperate Ocean");
-        RWGBiomes.baseOceanHot = new BaseBiomeOcean(BiomeIdConfig.hotOcean, 3, "Hot Ocean");
-        RWGBiomes.baseOceanWet = new BaseBiomeOcean(BiomeIdConfig.wetOcean, 4, "Wet Ocean");
-        RWGBiomes.baseOceanOasis = new BaseBiomeOcean(BiomeIdConfig.oceanOasis, 5, "Ocean Oasis");
+        RWGBiomes.baseOceanIce = withColor(new BaseBiomeOcean(BiomeIdConfig.iceOcean, 0, "Ice Ocean"), 0x9090A0);
+        RWGBiomes.baseOceanCold = withColor(new BaseBiomeOcean(BiomeIdConfig.coldOcean, 1, "Cold Ocean"), 0x181890);
+        RWGBiomes.baseOceanTemperate = withColor(
+                new BaseBiomeOcean(BiomeIdConfig.temperateOcean, 2, "Temperate Ocean"),
+                0x000070);
+        RWGBiomes.baseOceanHot = withColor(new BaseBiomeOcean(BiomeIdConfig.hotOcean, 3, "Hot Ocean"), 0x000050);
+        RWGBiomes.baseOceanWet = withColor(new BaseBiomeOcean(BiomeIdConfig.wetOcean, 4, "Wet Ocean"), 0x003070);
+        RWGBiomes.baseOceanOasis = withColor(new BaseBiomeOcean(BiomeIdConfig.oceanOasis, 5, "Ocean Oasis"), 0x005A78);
 
-        RWGBiomes.baseSnowDesert = new BaseBiomeSnowDesert(BiomeIdConfig.snowDesert, "Snow Desert");
-        RWGBiomes.baseSnowForest = new BaseBiomeSnowForest(BiomeIdConfig.snowForest, "Snow Forest");
-        RWGBiomes.baseColdPlains = new BaseBiomeColdPlains(BiomeIdConfig.coldPlains, "Cold Plains");
-        RWGBiomes.baseColdForest = new BaseBiomeColdForest(BiomeIdConfig.coldForest, "Cold Forest");
-        RWGBiomes.baseHotPlains = new BaseBiomeHotPlains(BiomeIdConfig.hotPlains, "Hot Plains");
-        RWGBiomes.baseHotForest = new BaseBiomeHotForest(BiomeIdConfig.hotForest, "Hot Forest");
-        RWGBiomes.baseHotDesert = new BaseBiomeHotDesert(BiomeIdConfig.hotDesert, "Hot Desert");
-        RWGBiomes.basePlains = new BaseBiomePlains(BiomeIdConfig.plains, "Plains (RWG)");
-        RWGBiomes.baseTropicalIsland = new BaseBiomeTropicalIsland(BiomeIdConfig.tropicalIsland, "Tropical Island");
-        RWGBiomes.baseRedwood = new BaseBiomeRedwood(BiomeIdConfig.redwood, "Redwood");
-        RWGBiomes.baseJungle = new BaseBiomeJungle(BiomeIdConfig.jungle, "Jungle (RWG)");
-        RWGBiomes.baseOasis = new BaseBiomeRiver(BiomeIdConfig.oasis, 5, "Oasis");
-        RWGBiomes.baseTemperateForest = new BaseBiomeTemperateForest(BiomeIdConfig.temperateForest, "Temperate Forest");
-        RWGBiomes.baseJungleMesa = new BaseBiomeJungleMesa(BiomeIdConfig.jungleMesa, "Jungle Mesa");
-        RWGBiomes.baseHighRainforest = new BaseBiomeJungle(BiomeIdConfig.highRainforest, "High Rainforest");
-        RWGBiomes.baseJungleHills = new BaseBiomeJungle(BiomeIdConfig.jungleHills, "Jungle Hills");
-        RWGBiomes.baseJungleCanyon = new BaseBiomeJungle(BiomeIdConfig.jungleCanyon, "Jungle Canyon");
-        RWGBiomes.baseRedwoodJungle = new BaseBiomeJungle(BiomeIdConfig.redwoodJungle, "Redwood Jungle");
+        RWGBiomes.baseSnowDesert = withColor(
+                new BaseBiomeSnowDesert(BiomeIdConfig.snowDesert, "Snow Desert"),
+                0xFFFFFF);
+        RWGBiomes.baseSnowForest = withColor(
+                new BaseBiomeSnowForest(BiomeIdConfig.snowForest, "Snow Forest"),
+                0x31554A);
+        RWGBiomes.baseColdPlains = withColor(
+                new BaseBiomeColdPlains(BiomeIdConfig.coldPlains, "Cold Plains"),
+                0x8FB0A0);
+        RWGBiomes.baseColdForest = withColor(
+                new BaseBiomeColdForest(BiomeIdConfig.coldForest, "Cold Forest"),
+                0x0B6659);
+        RWGBiomes.baseHotPlains = withColor(new BaseBiomeHotPlains(BiomeIdConfig.hotPlains, "Hot Plains"), 0xBDB25F);
+        RWGBiomes.baseHotForest = withColor(new BaseBiomeHotForest(BiomeIdConfig.hotForest, "Hot Forest"), 0xA79D64);
+        RWGBiomes.baseHotDesert = withColor(new BaseBiomeHotDesert(BiomeIdConfig.hotDesert, "Hot Desert"), 0xFA9418);
+        RWGBiomes.basePlains = withColor(new BaseBiomePlains(BiomeIdConfig.plains, "Plains (RWG)"), 0x8DB360);
+        RWGBiomes.baseTropicalIsland = withColor(
+                new BaseBiomeTropicalIsland(BiomeIdConfig.tropicalIsland, "Tropical Island"),
+                0x5BC25B);
+        RWGBiomes.baseRedwood = withColor(new BaseBiomeRedwood(BiomeIdConfig.redwood, "Redwood"), 0x596651);
+        RWGBiomes.baseJungle = withColor(new BaseBiomeJungle(BiomeIdConfig.jungle, "Jungle (RWG)"), 0x537B09);
+        RWGBiomes.baseOasis = withColor(new BaseBiomeRiver(BiomeIdConfig.oasis, 5, "Oasis"), 0x00B3A4);
+        RWGBiomes.baseTemperateForest = withColor(
+                new BaseBiomeTemperateForest(BiomeIdConfig.temperateForest, "Temperate Forest"),
+                0x056621);
+        RWGBiomes.baseJungleMesa = withColor(
+                new BaseBiomeJungleMesa(BiomeIdConfig.jungleMesa, "Jungle Mesa"),
+                0xD94515);
+        RWGBiomes.baseHighRainforest = withColor(
+                new BaseBiomeJungle(BiomeIdConfig.highRainforest, "High Rainforest"),
+                0x2E7D1E);
+        RWGBiomes.baseJungleHills = withColor(new BaseBiomeJungle(BiomeIdConfig.jungleHills, "Jungle Hills"), 0x2C4205);
+        RWGBiomes.baseJungleCanyon = withColor(
+                new BaseBiomeJungle(BiomeIdConfig.jungleCanyon, "Jungle Canyon"),
+                0x7A8F2A);
+        RWGBiomes.baseRedwoodJungle = withColor(
+                new BaseBiomeJungle(BiomeIdConfig.redwoodJungle, "Redwood Jungle"),
+                0x44704A);
 
         System.arraycopy(
                 new BiomeGenBase[] { RWGBiomes.baseRiverIce, RWGBiomes.baseRiverCold, RWGBiomes.baseRiverTemperate,
@@ -127,6 +151,11 @@ public class BaseBiomes {
                 Type.DENSE,
                 Type.HILLS);
         BiomeDictionary.registerBiomeType(RWGBiomes.baseColdForest, Type.FOREST, Type.DENSE, Type.HILLS);
+    }
+
+    private static <T extends BiomeGenBase> T withColor(T biome, int color) {
+        biome.setColor(color);
+        return biome;
     }
 
     public static void validateRegistrations() {
